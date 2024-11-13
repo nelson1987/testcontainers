@@ -1,9 +1,63 @@
 using FluentAssertions;
+using Newtonsoft.Json;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
 using Testcontainers.RabbitMq;
+using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace IntegrationTests;
+
+public record CreatedUserEvent(int Id, string Name, int Age, bool IsActive);
+
+public class Publisher<T> where T : class
+{
+    private readonly IChannel _channel;
+
+    public Publisher(IChannel connection)
+    {
+        _channel = connection;
+    }
+
+    public async Task Send(string queueName, T @event)
+    {
+        await _channel.QueueDeclareAsync(queueName, durable: true, exclusive: false, autoDelete: false);
+
+        var message = JsonSerializer.Serialize(@event);
+        var body = System.Text.Encoding.UTF8.GetBytes(message);
+        await _channel.BasicPublishAsync(exchange: "", routingKey: queueName, body: body);
+    }
+}
+public class Subscriber<T> where T : class
+{
+    private readonly IChannel _channel;
+    public bool messageReceived;
+    public string receivedMessage;
+    public CreatedUserEvent receivedEvent;
+    public Subscriber(IChannel connection)
+    {
+        _channel = connection;
+    }
+
+    public async Task Consume(string queueName)
+    {
+        await _channel.QueueDeclareAsync(queueName, durable: true, exclusive: false, autoDelete: false);
+        var consumer = new AsyncEventingBasicConsumer(_channel);
+
+        consumer.ReceivedAsync  += async (model, ea) =>
+        {
+            var receivedBody = ea.Body.ToArray();
+            receivedMessage = System.Text.Encoding.UTF8.GetString(receivedBody);
+            receivedEvent = JsonConvert.DeserializeObject<CreatedUserEvent>(receivedMessage);
+            messageReceived = true;
+            await _channel.BasicAckAsync(ea.DeliveryTag, false);
+        };
+
+        await _channel.BasicConsumeAsync(queue: queueName,
+            autoAck: false,
+            consumer: consumer);
+    }
+}
+
 public class RabbitMqIntegrationTests
 {
     private readonly RabbitMqContainer _rabbitMqContainer = new RabbitMqBuilder()
@@ -26,10 +80,14 @@ public class RabbitMqIntegrationTests
         // Then
         connection.IsOpen.Should().BeTrue();
     }
+    
     [Fact]
     public async Task TestPublishAndConsumeMessage()
     {
         await _rabbitMqContainer.StartAsync();
+        
+        var queueName = "test-queue";
+        var @event = new CreatedUserEvent(6, "John Doe", 18, false);
         
         var connectionFactory = new ConnectionFactory();
         connectionFactory.Uri = new Uri(_rabbitMqContainer.GetConnectionString());
@@ -37,41 +95,20 @@ public class RabbitMqIntegrationTests
         // When
         using var connection = await connectionFactory.CreateConnectionAsync();
         using var _channel = await connection.CreateChannelAsync();
-        
         // Arrange
-        var queueName = "test-queue";
-        var message = "Hello, RabbitMQ!";
-        var messageReceived = false;
-
-        await _channel.QueueDeclareAsync(queueName, durable: true, exclusive: false, autoDelete: false);
-
-        // Act
-        // Publica a mensagem
-        var body = System.Text.Encoding.UTF8.GetBytes(message);
-        await _channel.BasicPublishAsync(exchange: "", routingKey: queueName, body: body);
-
-        // Configura o consumer
-        var consumer = new AsyncEventingBasicConsumer(_channel);
-        var receivedMessage = string.Empty;
-
-        consumer.ReceivedAsync  += async (model, ea) =>
-        {
-            var receivedBody = ea.Body.ToArray();
-            receivedMessage = System.Text.Encoding.UTF8.GetString(receivedBody);
-            messageReceived = true;
-            await _channel.BasicAckAsync(ea.DeliveryTag, false);
-        };
-
-        await _channel.BasicConsumeAsync(queue: queueName,
-            autoAck: false,
-            consumer: consumer);
+        var publisher = new Publisher<CreatedUserEvent>(_channel);
+        var subscriber = new Subscriber<CreatedUserEvent>(_channel);
+        
+        await publisher.Send(queueName, @event);
+        await subscriber.Consume(queueName);
 
         // Aguarda o processamento da mensagem
         await Task.Delay(1000); // Tempo para processamento
 
         // Assert
-        Assert.True(messageReceived);
-        Assert.Equal(message, receivedMessage);
+        Assert.True(subscriber.messageReceived);
+        //Assert.Equal(message, subscriber.receivedMessage);
+        Assert.Equal(@event, subscriber.receivedEvent);
         
         await _rabbitMqContainer.StopAsync();
 
