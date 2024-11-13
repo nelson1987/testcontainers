@@ -68,7 +68,7 @@ public class UnitTest1
         Console.WriteLine("ConnectionString: {0}",connectionString.ToString());
         var options = builder
             //.UseInMemoryDatabase("test")
-            .UseSqlServer(_dbContainer.GetConnectionString())
+            .UseSqlServer(connectionString.ToString())
             .UseInternalServiceProvider(serviceProvider)
             .Options;
         
