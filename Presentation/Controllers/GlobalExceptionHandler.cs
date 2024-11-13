@@ -1,39 +1,8 @@
 using System.Net;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
-using Serilog;
 
 namespace Presentation.Controllers;
-
-[ApiController]
-[Route("[controller]")]
-public class WeatherForecastController : ControllerBase
-{
-    private static readonly string[] Summaries = new[]
-    {
-        "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-    };
-
-    private readonly ILogger<WeatherForecastController> _logger;
-
-    public WeatherForecastController(ILogger<WeatherForecastController> logger)
-    {
-        _logger = logger;
-    }
-
-    [HttpGet(Name = "GetWeatherForecast")]
-    public IEnumerable<WeatherForecast> Get()
-    {
-        throw new Exception();
-        return Enumerable.Range(1, 5).Select(index => new WeatherForecast
-            {
-                Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                TemperatureC = Random.Shared.Next(-20, 55),
-                Summary = Summaries[Random.Shared.Next(Summaries.Length)]
-            })
-            .ToArray();
-    }
-}
 
 public class GlobalExceptionHandler : IExceptionHandler
 {
@@ -85,29 +54,4 @@ public class GlobalExceptionHandler : IExceptionHandler
         KeyNotFoundException => "Recurso não encontrado",
         _ => "Erro interno do servidor"
     };
-}
-
-public static class ExceptionHandlerExtensions
-{
-    public static void AddGlobalExceptionHandler(this IServiceCollection services)
-    {
-        services.AddExceptionHandler<GlobalExceptionHandler>();
-        services.AddProblemDetails();
-    }
-}
-
-public static class SerilogExtensions
-{
-    public static void AddSerilog(this ConfigureHostBuilder host)
-    {
-        host.UseSerilog((context, services, configuration) => configuration
-            .ReadFrom.Configuration(context.Configuration)
-            .ReadFrom.Services(services)
-            .Enrich.FromLogContext()
-            .WriteTo.Console()
-            .WriteTo.File("logs/myapp-.txt", 
-                rollingInterval: RollingInterval.Day,
-                retainedFileCountLimit: 7)
-        );
-    }
 }
