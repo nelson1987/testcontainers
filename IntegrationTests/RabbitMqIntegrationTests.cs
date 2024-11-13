@@ -24,7 +24,15 @@ public class Publisher<T> where T : class
 
         var message = JsonSerializer.Serialize(@event);
         var body = System.Text.Encoding.UTF8.GetBytes(message);
-        await _channel.BasicPublishAsync(exchange: "", routingKey: queueName, body: body);
+        var properties = new BasicProperties
+        {
+            Persistent = true
+        };
+        await _channel.BasicPublishAsync(exchange: string.Empty, 
+            routingKey: queueName, 
+            mandatory: true,
+            basicProperties: properties,
+            body: body);
     }
 }
 public class Subscriber<T> where T : class
@@ -79,6 +87,8 @@ public class RabbitMqIntegrationTests
 
         // Then
         connection.IsOpen.Should().BeTrue();
+        
+        await _rabbitMqContainer.StopAsync();
     }
     
     [Fact]
@@ -88,17 +98,15 @@ public class RabbitMqIntegrationTests
         
         var queueName = "test-queue";
         var @event = new CreatedUserEvent(6, "John Doe", 18, false);
-        
         var connectionFactory = new ConnectionFactory();
         connectionFactory.Uri = new Uri(_rabbitMqContainer.GetConnectionString());
 
-        // When
         using var connection = await connectionFactory.CreateConnectionAsync();
         using var _channel = await connection.CreateChannelAsync();
-        // Arrange
+        
+        //Act
         var publisher = new Publisher<CreatedUserEvent>(_channel);
         var subscriber = new Subscriber<CreatedUserEvent>(_channel);
-        
         await publisher.Send(queueName, @event);
         await subscriber.Consume(queueName);
 
@@ -106,13 +114,9 @@ public class RabbitMqIntegrationTests
         await Task.Delay(1000); // Tempo para processamento
 
         // Assert
-        Assert.True(subscriber.messageReceived);
-        //Assert.Equal(message, subscriber.receivedMessage);
-        Assert.Equal(@event, subscriber.receivedEvent);
+        subscriber.messageReceived.Should().BeTrue();
+        subscriber.receivedEvent.Should().Be(@event);
         
         await _rabbitMqContainer.StopAsync();
-
-        // ASSERT
-        //user.Id.Should().Be(1);
     }
 }
