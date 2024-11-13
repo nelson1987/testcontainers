@@ -56,18 +56,15 @@ public class UnitTest1
     public async Task Test1()
     {
         await _dbContainer.StartAsync();
+        var connectionString = new SqlConnectionStringBuilder(_dbContainer.GetConnectionString());
+        connectionString.InitialCatalog = Guid.NewGuid().ToString("D");
         
         var serviceProvider = new ServiceCollection()
             .AddEntityFrameworkSqlServer()
             .BuildServiceProvider();
         
         var builder = new DbContextOptionsBuilder<MyContext>();
-        Console.WriteLine("ConnectionString: {0}",_dbContainer.GetConnectionString());
-        var connectionString = new SqlConnectionStringBuilder(_dbContainer.GetConnectionString());
-        connectionString.InitialCatalog = Guid.NewGuid().ToString("D");
-        Console.WriteLine("ConnectionString: {0}",connectionString.ToString());
         var options = builder
-            //.UseInMemoryDatabase("test")
             .UseSqlServer(connectionString.ToString())
             .UseInternalServiceProvider(serviceProvider)
             .Options;
