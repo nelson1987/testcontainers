@@ -18,3 +18,9 @@ git remote add origin https://github.com/nelson1987/testcontainers.git
 git branch -M main
 git push -u origin main
 ```
+
+
+```sh
+dotnet new gitignore
+dotnet new sln -n Container 
+```
