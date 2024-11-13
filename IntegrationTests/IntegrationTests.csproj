@@ -33,4 +33,8 @@
       <ProjectReference Include="..\Presentation\Presentation.csproj" />
     </ItemGroup>
 
+    <ItemGroup>
+      <None Remove="README.md" />
+    </ItemGroup>
+
 </Project>

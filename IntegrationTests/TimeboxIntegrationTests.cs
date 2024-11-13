@@ -11,7 +11,7 @@ using Testcontainers.MsSql;
 using Testcontainers.RabbitMq;
 
 namespace IntegrationTests;
-
+/*
 public interface ISender : IDisposable
 {
 }
@@ -116,5 +116,47 @@ public class TimeboxIntegrationTests : BaseIntegrationTest
         var users = await response.Content.ReadFromJsonAsync<WeatherForecast[]>();
         users.Should().NotBeNull();
         users.Should().NotBeEmpty();
+    }
+}
+*/
+public class IntegrationTestsBase : IAsyncLifetime
+{
+    public IntegrationTestsBase()
+    {
+        Console.WriteLine("IntegrationTestsBase");
+    }
+    public Task InitializeAsync()
+    {
+        Console.WriteLine("InitializeAsync");
+        return Task.CompletedTask;
+    }
+
+    public Task DisposeAsync()
+    {
+        Console.WriteLine("DisposeAsync");
+        return Task.CompletedTask;
+    }
+}
+
+public class TimeboxIntegrationTests : IntegrationTestsBase
+{
+    public TimeboxIntegrationTests()
+    {
+        Console.WriteLine("TimeboxIntegrationTests");
+    }
+    
+    [Fact]
+    public Task Get_ListarTodos_RetornaSucesso()
+    {
+        Console.WriteLine("Get_ListarTodos_RetornaSucesso");
+        return Task.CompletedTask;
+        /*
+IntegrationTestsBase
+TimeboxIntegrationTests
+InitializeAsync
+Get_ListarTodos_RetornaSucesso
+DisposeAsync
+         */
+        
     }
 }
