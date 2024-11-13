@@ -30,7 +30,7 @@ public class MyContext: DbContext
 }
 public class User
 {
-    public User()
+    protected User()
     {
 
     }
@@ -41,12 +41,12 @@ public class User
         this.Age = Age;
         this.IsActive = IsActive;
     }
-    public int Id { get; set; }
-    public string Name { get; set; }
-    public int Age { get; set; }
-    public bool IsActive { get; set; }
+    public int Id { get; private set; }
+    public string Name { get; private set; }
+    public int Age { get; private set; }
+    public bool IsActive { get; private set; }
 }
-public class UnitTest1
+public class EFIntegrationTests
 {
     private readonly MsSqlContainer _dbContainer = new MsSqlBuilder()
         .WithImage("mcr.microsoft.com/mssql/server:2022-latest")
