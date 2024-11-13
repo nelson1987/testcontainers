@@ -53,7 +53,7 @@ public class EFIntegrationTests
         .WithPassword("Strong_password_123!")
         .Build();
     [Fact]
-    public async Task Test1()
+    public async Task AddAsync_DadosValidos_CriarUsuarioComId()
     {
         await _dbContainer.StartAsync();
         var connectionString = new SqlConnectionStringBuilder(_dbContainer.GetConnectionString());
