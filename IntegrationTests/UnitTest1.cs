@@ -18,7 +18,7 @@ public class MyContext: DbContext
         modelBuilder.Entity<User>(e =>
         {
             e
-                .ToTable("user")
+                .ToTable("TB_USER")
                 .HasKey(k => k.Id);
 
             e
@@ -66,10 +66,11 @@ public class UnitTest1
             .UseSqlServer(_dbContainer.GetConnectionString())
             .UseInternalServiceProvider(serviceProvider)
             .Options;
-
+        
         MyContext dbContext = new MyContext(options);
         dbContext.Database.EnsureDeleted();
         dbContext.Database.EnsureCreated();
+        dbContext.Database.Migrate();
         
         var user = new User(0, "LUCIANO PEREIRA", 33, true);
 
