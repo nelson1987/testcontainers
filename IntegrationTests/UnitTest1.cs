@@ -1,4 +1,5 @@
 using FluentAssertions;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Testcontainers.MsSql;
@@ -61,6 +62,10 @@ public class UnitTest1
             .BuildServiceProvider();
         
         var builder = new DbContextOptionsBuilder<MyContext>();
+        Console.WriteLine("ConnectionString: {0}",_dbContainer.GetConnectionString());
+        var connectionString = new SqlConnectionStringBuilder(_dbContainer.GetConnectionString());
+        connectionString.InitialCatalog = Guid.NewGuid().ToString("D");
+        Console.WriteLine("ConnectionString: {0}",connectionString.ToString());
         var options = builder
             //.UseInMemoryDatabase("test")
             .UseSqlServer(_dbContainer.GetConnectionString())
