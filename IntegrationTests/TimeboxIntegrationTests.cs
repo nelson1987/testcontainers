@@ -2,11 +2,41 @@ using FluentAssertions;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using RabbitMQ.Client;
 using Testcontainers.MsSql;
 using Testcontainers.RabbitMq;
 using Xunit.Abstractions;
 
 namespace IntegrationTests;
+
+public class RabbitMqContextFixture : IAsyncLifetime
+{
+    private readonly RabbitMqContainer _rabbitMqContainer = new RabbitMqBuilder()
+        .WithImage("rabbitmq:3.11")
+        .Build();
+    public IChannel Channel { get; private set; }
+
+    public RabbitMqContextFixture()
+    {
+        Console.WriteLine("RabbitMqContextFixture :: Started");
+    }
+
+    public async Task InitializeAsync()
+    {
+        await _rabbitMqContainer.StartAsync();
+        
+        var connectionFactory = new ConnectionFactory();
+        connectionFactory.Uri = new Uri(_rabbitMqContainer.GetConnectionString());
+        
+        var connection = await connectionFactory.CreateConnectionAsync();
+        Channel = await connection.CreateChannelAsync();
+    }
+
+    public async Task DisposeAsync()
+    {
+        await _rabbitMqContainer.StopAsync();
+    }
+}
 
 public class InMemoryDbContextFixture : IAsyncLifetime
 {
@@ -62,45 +92,24 @@ public class InMemoryDbContextFixture : IAsyncLifetime
     }
 }
 
-
-
-
-// public class User
-// {
-// }
-//
-// public class InMemoryDbContext : IAsyncLifetime
-// {
-//     public List<User> Users { get; internal set; }
-//
-//     public async Task InitializeAsync()
-//     {
-//         Console.WriteLine("InMemoryDbContext :: InitializeAsync");
-//         await Task.CompletedTask;
-//     }
-//
-//     public async Task DisposeAsync()
-//     {
-//         Console.WriteLine("InMemoryDbContext :: DisposeAsync");
-//         await Task.CompletedTask;
-//     }
-// }
-
-
 [CollectionDefinition("Context collection")]
-public class InMemoryDbContextFixtureCollection : ICollectionFixture<InMemoryDbContextFixture>
+public class InMemoryDbContextFixtureCollection : 
+    ICollectionFixture<InMemoryDbContextFixture>, 
+    ICollectionFixture<RabbitMqContextFixture>
 {
 }
 
 [Collection("Context collection")]
 public class ContextTestClass1 : IAsyncLifetime
 {
-    protected MyContext inMemoryDbContext;
+    protected MyContext InMemoryDbContext;
+    protected IChannel RabbitMqChannel;
 
-    public ContextTestClass1(InMemoryDbContextFixture fixture)
+    public ContextTestClass1(InMemoryDbContextFixture fixture, RabbitMqContextFixture rabbitMqContextFixture)
     {
         Console.WriteLine("2_ContextTestClass :: Started");
-        inMemoryDbContext = fixture.Context;
+        InMemoryDbContext = fixture.Context;
+        RabbitMqChannel = rabbitMqContextFixture.Channel;
     }
 
     public async Task InitializeAsync()
@@ -118,7 +127,9 @@ public class ContextTestClass1 : IAsyncLifetime
 
 public class InMemoryDbContextTests : ContextTestClass1
 {
-    public InMemoryDbContextTests(InMemoryDbContextFixture fixture) : base(fixture)
+    public InMemoryDbContextTests(InMemoryDbContextFixture fixture, 
+        RabbitMqContextFixture rabbitMqContextFixture) 
+        : base(fixture, rabbitMqContextFixture)
     {
         Console.WriteLine("3_InMemoryDbContextTests :: Started");
     }
@@ -127,7 +138,7 @@ public class InMemoryDbContextTests : ContextTestClass1
     public void WithNoItems_CountShouldReturnZero()
     {
         Console.WriteLine("InMemoryDbContextTests :: WithNoItems_CountShouldReturnZero");
-        var count = inMemoryDbContext.User.Count();
+        var count = InMemoryDbContext.User.Count();
         
         Assert.Equal(0, count);
     }
@@ -137,12 +148,31 @@ public class InMemoryDbContextTests : ContextTestClass1
     {
         Console.WriteLine("InMemoryDbContextTests :: AfterAddingItem_CountShouldReturnOne");
         var user = new User(0, "LUCIANO PEREIRA", 33, true);
-        inMemoryDbContext.User.Add(user);
-        inMemoryDbContext.SaveChanges();
+        InMemoryDbContext.User.Add(user);
+        InMemoryDbContext.SaveChanges();
         
-        var count = inMemoryDbContext.User.Count();
+        var count = InMemoryDbContext.User.Count();
         
         Assert.Equal(1, count);
+    }
+    
+    [Fact]
+    public async Task TestPublishAndConsumeMessage()
+    {
+        //Act
+        var queueName = "test-queue";
+        var @event = new CreatedUserEvent(6, "John Doe", 18, false);
+        var publisher = new Publisher<CreatedUserEvent>(RabbitMqChannel);
+        var subscriber = new Subscriber<CreatedUserEvent>(RabbitMqChannel);
+        await publisher.Send(queueName, @event);
+        await subscriber.Consume(queueName);
+
+        // Aguarda o processamento da mensagem
+        await Task.Delay(1000); // Tempo para processamento
+
+        // Assert
+        subscriber.messageReceived.Should().BeTrue();
+        subscriber.receivedEvent.Should().Be(@event);
     }
 }
 
