@@ -3,6 +3,7 @@ using FluentAssertions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
+using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
 using Presentation;
@@ -121,20 +122,57 @@ public class TimeboxIntegrationTests : BaseIntegrationTest
 */
 public class IntegrationTestsBase : IAsyncLifetime
 {
+    private readonly MsSqlContainer _msSqlContainer = new MsSqlBuilder()
+        .WithImage("mcr.microsoft.com/mssql/server:2022-latest")
+        .WithPassword("Strong_password_123!")
+        .Build();
+    
+    private readonly RabbitMqContainer _rabbitMqContainer = new RabbitMqBuilder()
+        .WithImage("rabbitmq:3.11")
+        .Build();
+    
+    protected MyContext _dbContext { get; private set; }
+    //protected MyContext _dbContext { get; private set; }
+    
     public IntegrationTestsBase()
     {
         Console.WriteLine("IntegrationTestsBase");
     }
-    public Task InitializeAsync()
+    
+    public async Task InitializeAsync()
     {
         Console.WriteLine("InitializeAsync");
-        return Task.CompletedTask;
+        await _msSqlContainer.StartAsync();
+        await _rabbitMqContainer.StartAsync();
+        InitializeDatabase();
     }
 
-    public Task DisposeAsync()
+    public async Task DisposeAsync()
     {
         Console.WriteLine("DisposeAsync");
-        return Task.CompletedTask;
+        await _msSqlContainer.StopAsync();
+        await _rabbitMqContainer.StopAsync();
+    }
+
+    private void InitializeDatabase()
+    {
+        var connectionString = new SqlConnectionStringBuilder(_msSqlContainer.GetConnectionString());
+        connectionString.InitialCatalog = Guid.NewGuid().ToString("D");
+        
+        var serviceProvider = new ServiceCollection()
+            .AddEntityFrameworkSqlServer()
+            .BuildServiceProvider();
+        
+        var builder = new DbContextOptionsBuilder<MyContext>();
+        var options = builder
+            .UseSqlServer(connectionString.ToString())
+            .UseInternalServiceProvider(serviceProvider)
+            .Options;
+        
+        _dbContext = new MyContext(options);
+        _dbContext.Database.EnsureDeleted();
+        _dbContext.Database.EnsureCreated();
+        _dbContext.Database.Migrate();
     }
 }
 
@@ -146,10 +184,17 @@ public class TimeboxIntegrationTests : IntegrationTestsBase
     }
     
     [Fact]
-    public Task Get_ListarTodos_RetornaSucesso()
+    public async Task Get_ListarTodos_RetornaSucesso()
     {
         Console.WriteLine("Get_ListarTodos_RetornaSucesso");
-        return Task.CompletedTask;
+        var user = new User(0, "LUCIANO PEREIRA", 33, true);
+
+        // REPOSITORY
+        await _dbContext.User.AddAsync(user);
+        await _dbContext.SaveChangesAsync();
+
+        // ASSERT
+        user.Id.Should().Be(1);
         /*
 IntegrationTestsBase
 TimeboxIntegrationTests
