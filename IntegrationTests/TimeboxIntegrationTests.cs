@@ -12,6 +12,7 @@ using Testcontainers.MsSql;
 using Testcontainers.RabbitMq;
 
 namespace IntegrationTests;
+
 /*
 public interface ISender : IDisposable
 {
@@ -120,69 +121,87 @@ public class TimeboxIntegrationTests : BaseIntegrationTest
     }
 }
 */
-public class IntegrationTestsBase : IAsyncLifetime
+public class DatabaseFixture : IAsyncLifetime
 {
     private readonly MsSqlContainer _msSqlContainer = new MsSqlBuilder()
         .WithImage("mcr.microsoft.com/mssql/server:2022-latest")
         .WithPassword("Strong_password_123!")
         .Build();
-    
-    private readonly RabbitMqContainer _rabbitMqContainer = new RabbitMqBuilder()
-        .WithImage("rabbitmq:3.11")
-        .Build();
-    
-    protected MyContext _dbContext { get; private set; }
-    //protected MyContext _dbContext { get; private set; }
-    
-    public IntegrationTestsBase()
-    {
-        Console.WriteLine("IntegrationTestsBase");
-    }
-    
-    public async Task InitializeAsync()
-    {
-        Console.WriteLine("InitializeAsync");
-        await _msSqlContainer.StartAsync();
-        await _rabbitMqContainer.StartAsync();
-        InitializeDatabase();
-    }
 
-    public async Task DisposeAsync()
-    {
-        Console.WriteLine("DisposeAsync");
-        await _msSqlContainer.StopAsync();
-        await _rabbitMqContainer.StopAsync();
-    }
+    public MyContext _dbContext { get; private set; }
 
     private void InitializeDatabase()
     {
+        Console.WriteLine("DatabaseFixture :: InitializeDatabase");
         var connectionString = new SqlConnectionStringBuilder(_msSqlContainer.GetConnectionString());
         connectionString.InitialCatalog = Guid.NewGuid().ToString("D");
-        
+
         var serviceProvider = new ServiceCollection()
             .AddEntityFrameworkSqlServer()
             .BuildServiceProvider();
-        
+
         var builder = new DbContextOptionsBuilder<MyContext>();
         var options = builder
             .UseSqlServer(connectionString.ToString())
             .UseInternalServiceProvider(serviceProvider)
             .Options;
-        
+
         _dbContext = new MyContext(options);
         _dbContext.Database.EnsureDeleted();
         _dbContext.Database.EnsureCreated();
         _dbContext.Database.Migrate();
     }
+
+    public async Task InitializeAsync()
+    {
+        Console.WriteLine("DatabaseFixture :: InitializeAsync");
+        await _msSqlContainer.StartAsync();
+    }
+
+    public async Task DisposeAsync()
+    {
+        Console.WriteLine("DatabaseFixture :: DisposeAsync");
+        await _msSqlContainer.StopAsync();
+    }
+}
+
+[Collection("IntegrationTests")]
+public class IntegrationTestsBase : IAsyncLifetime
+{
+    private readonly RabbitMqContainer _rabbitMqContainer = new RabbitMqBuilder()
+        .WithImage("rabbitmq:3.11")
+        .Build();
+
+    protected MyContext _dbContext { get; }
+    private readonly DatabaseFixture _fixture;
+
+    public IntegrationTestsBase(DatabaseFixture fixture)
+    {
+        Console.WriteLine("IntegrationTestsBase :: IntegrationTestsBase");
+        _fixture = fixture;
+        _dbContext = _fixture._dbContext;
+    }
+
+    public async Task InitializeAsync()
+    {
+        Console.WriteLine("IntegrationTestsBase :: InitializeAsync");
+        await _rabbitMqContainer.StartAsync();
+    }
+
+    public async Task DisposeAsync()
+    {
+        Console.WriteLine("IntegrationTestsBase :: DisposeAsync");
+        await _rabbitMqContainer.StopAsync();
+    }
 }
 
 public class TimeboxIntegrationTests : IntegrationTestsBase
 {
-    public TimeboxIntegrationTests()
+    public TimeboxIntegrationTests(DatabaseFixture fixture) : base(fixture)
     {
         Console.WriteLine("TimeboxIntegrationTests");
     }
-    
+
     [Fact]
     public async Task Get_ListarTodos_RetornaSucesso()
     {
@@ -202,6 +221,5 @@ InitializeAsync
 Get_ListarTodos_RetornaSucesso
 DisposeAsync
          */
-        
     }
 }
