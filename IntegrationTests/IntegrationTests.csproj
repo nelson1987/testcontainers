@@ -37,4 +37,8 @@
       <None Remove="README.md" />
     </ItemGroup>
 
+    <ItemGroup>
+      <Compile Remove="SharedUnitTests.cs" />
+      <Compile Remove="TimeboxIntegrationTests.cs" />
+    </ItemGroup>
 </Project>

@@ -15,12 +15,6 @@ public class RabbitMqContextFixture : IAsyncLifetime
         .WithImage("rabbitmq:3.11")
         .Build();
     public IChannel Channel { get; private set; }
-
-    public RabbitMqContextFixture()
-    {
-        Console.WriteLine("RabbitMqContextFixture :: Started");
-    }
-
     public async Task InitializeAsync()
     {
         await _rabbitMqContainer.StartAsync();
@@ -46,27 +40,16 @@ public class InMemoryDbContextFixture : IAsyncLifetime
         .Build();
     public MyContext Context { get; private set; }
 
-    public InMemoryDbContextFixture()
-    {
-        Console.WriteLine("1_InMemoryDbContextFixture :: Started");
-    }
-
     public async Task InitializeAsync()
     {
         await _msSqlContainer.StartAsync();
         await InitializeDatabase();
-        // _msSqlContainer = 
-        // Context = new InMemoryDbContext();
-        Console.WriteLine("1_InMemoryDbContextFixture :: InitializeAsync");
-        await Task.CompletedTask;
     }
 
     public async Task DisposeAsync()
     {
         await _msSqlContainer.StopAsync();
         await Context.DisposeAsync();
-        Console.WriteLine("1_InMemoryDbContextFixture :: DisposeAsync");
-        await Task.CompletedTask;
     }
     
     private async Task InitializeDatabase()
@@ -107,20 +90,17 @@ public class ContextTestClass1 : IAsyncLifetime
 
     public ContextTestClass1(InMemoryDbContextFixture fixture, RabbitMqContextFixture rabbitMqContextFixture)
     {
-        Console.WriteLine("2_ContextTestClass :: Started");
         InMemoryDbContext = fixture.Context;
         RabbitMqChannel = rabbitMqContextFixture.Channel;
     }
 
     public async Task InitializeAsync()
     {
-        Console.WriteLine("2_ContextTestClass :: InitializeAsync");
         await Task.CompletedTask;
     }
 
     public async Task DisposeAsync()
     {
-        Console.WriteLine("ContextTestClass1 :: DisposeAsync");
         await Task.CompletedTask;
     }
 }
@@ -131,13 +111,11 @@ public class InMemoryDbContextTests : ContextTestClass1
         RabbitMqContextFixture rabbitMqContextFixture) 
         : base(fixture, rabbitMqContextFixture)
     {
-        Console.WriteLine("3_InMemoryDbContextTests :: Started");
     }
 
     [Fact]
     public void WithNoItems_CountShouldReturnZero()
     {
-        Console.WriteLine("InMemoryDbContextTests :: WithNoItems_CountShouldReturnZero");
         var count = InMemoryDbContext.User.Count();
         
         Assert.Equal(0, count);
@@ -146,7 +124,6 @@ public class InMemoryDbContextTests : ContextTestClass1
     [Fact]
     public void AfterAddingItem_CountShouldReturnOne()
     {
-        Console.WriteLine("InMemoryDbContextTests :: AfterAddingItem_CountShouldReturnOne");
         var user = new User(0, "LUCIANO PEREIRA", 33, true);
         InMemoryDbContext.User.Add(user);
         InMemoryDbContext.SaveChanges();
