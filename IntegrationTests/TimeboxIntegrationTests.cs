@@ -1,13 +1,7 @@
-using System.Net.Http.Json;
 using FluentAssertions;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.AspNetCore.Mvc.Testing;
-using Microsoft.AspNetCore.TestHost;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
-using Presentation;
-using Presentation.Commons;
 using Testcontainers.MsSql;
 using Testcontainers.RabbitMq;
 using Xunit.Abstractions;
@@ -199,10 +193,9 @@ public class TimeboxIntegrationTests : IntegrationTestsBase
 {
     private readonly ITestOutputHelper _testOutputHelper;
 
-    public TimeboxIntegrationTests(DatabaseFixture fixture, ITestOutputHelper testOutputHelper) : base(fixture)
+    protected TimeboxIntegrationTests(DatabaseFixture fixture, ITestOutputHelper testOutputHelper) : base(fixture)
     {
         _testOutputHelper = testOutputHelper;
-        Console.WriteLine("TimeboxIntegrationTests :: TimeboxIntegrationTests");
     }
 
     [Fact]
