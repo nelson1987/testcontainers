@@ -10,6 +10,7 @@ using Presentation;
 using Presentation.Commons;
 using Testcontainers.MsSql;
 using Testcontainers.RabbitMq;
+using Xunit.Abstractions;
 
 namespace IntegrationTests;
 
@@ -128,9 +129,9 @@ public class DatabaseFixture : IAsyncLifetime
         .WithPassword("Strong_password_123!")
         .Build();
 
-    public MyContext _dbContext { get; private set; }
+    public MyContext? DbContext { get; private set; }
 
-    private void InitializeDatabase()
+    private async Task InitializeDatabase()
     {
         Console.WriteLine("DatabaseFixture :: InitializeDatabase");
         var connectionString = new SqlConnectionStringBuilder(_msSqlContainer.GetConnectionString());
@@ -146,16 +147,17 @@ public class DatabaseFixture : IAsyncLifetime
             .UseInternalServiceProvider(serviceProvider)
             .Options;
 
-        _dbContext = new MyContext(options);
-        _dbContext.Database.EnsureDeleted();
-        _dbContext.Database.EnsureCreated();
-        _dbContext.Database.Migrate();
+        DbContext = new MyContext(options);
+        await DbContext.Database.EnsureDeletedAsync();
+        await DbContext.Database.EnsureCreatedAsync();
+        await DbContext.Database.MigrateAsync();
     }
 
     public async Task InitializeAsync()
     {
         Console.WriteLine("DatabaseFixture :: InitializeAsync");
         await _msSqlContainer.StartAsync();
+        await InitializeDatabase();
     }
 
     public async Task DisposeAsync()
@@ -172,14 +174,12 @@ public class IntegrationTestsBase : IAsyncLifetime
         .WithImage("rabbitmq:3.11")
         .Build();
 
-    protected MyContext _dbContext { get; }
-    private readonly DatabaseFixture _fixture;
+    protected MyContext? DbContext { get; }
 
-    public IntegrationTestsBase(DatabaseFixture fixture)
+    protected IntegrationTestsBase(DatabaseFixture fixture)
     {
         Console.WriteLine("IntegrationTestsBase :: IntegrationTestsBase");
-        _fixture = fixture;
-        _dbContext = _fixture._dbContext;
+        DbContext = fixture.DbContext;
     }
 
     public async Task InitializeAsync()
@@ -197,21 +197,24 @@ public class IntegrationTestsBase : IAsyncLifetime
 
 public class TimeboxIntegrationTests : IntegrationTestsBase
 {
-    public TimeboxIntegrationTests(DatabaseFixture fixture) : base(fixture)
+    private readonly ITestOutputHelper _testOutputHelper;
+
+    public TimeboxIntegrationTests(DatabaseFixture fixture, ITestOutputHelper testOutputHelper) : base(fixture)
     {
-        Console.WriteLine("TimeboxIntegrationTests");
+        _testOutputHelper = testOutputHelper;
+        Console.WriteLine("TimeboxIntegrationTests :: TimeboxIntegrationTests");
     }
 
     [Fact]
     public async Task Get_ListarTodos_RetornaSucesso()
     {
-        Console.WriteLine("Get_ListarTodos_RetornaSucesso");
+        _testOutputHelper.WriteLine("TimeboxIntegrationTests :: Get_ListarTodos_RetornaSucesso");
         var user = new User(0, "LUCIANO PEREIRA", 33, true);
-
+        
         // REPOSITORY
-        await _dbContext.User.AddAsync(user);
-        await _dbContext.SaveChangesAsync();
-
+        await DbContext!.User.AddAsync(user);
+        await DbContext.SaveChangesAsync();
+        
         // ASSERT
         user.Id.Should().Be(1);
         /*
