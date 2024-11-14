@@ -2,7 +2,7 @@ using System.Net;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Presentation.Controllers;
+namespace Presentation.Commons;
 
 public class GlobalExceptionHandler : IExceptionHandler
 {

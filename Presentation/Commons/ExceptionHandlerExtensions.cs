@@ -1,4 +1,4 @@
-namespace Presentation.Controllers;
+namespace Presentation.Commons;
 
 public static class ExceptionHandlerExtensions
 {

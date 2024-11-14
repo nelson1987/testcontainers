@@ -1,75 +1,16 @@
 using FluentAssertions;
-using Newtonsoft.Json;
+using Microsoft.Extensions.Logging;
+using Moq;
+using Presentation.Commons;
 using RabbitMQ.Client;
-using RabbitMQ.Client.Events;
 using Testcontainers.RabbitMq;
-using JsonSerializer = System.Text.Json.JsonSerializer;
 
 namespace IntegrationTests;
-
-public record CreatedUserEvent(int Id, string Name, int Age, bool IsActive);
-
-public class Publisher<T> where T : class
-{
-    private readonly IChannel _channel;
-
-    public Publisher(IChannel connection)
-    {
-        _channel = connection;
-    }
-
-    public async Task Send(string queueName, T @event)
-    {
-        await _channel.QueueDeclareAsync(queueName, durable: true, exclusive: false, autoDelete: false);
-
-        var message = JsonSerializer.Serialize(@event);
-        var body = System.Text.Encoding.UTF8.GetBytes(message);
-        var properties = new BasicProperties
-        {
-            Persistent = true
-        };
-        await _channel.BasicPublishAsync(exchange: string.Empty, 
-            routingKey: queueName, 
-            mandatory: true,
-            basicProperties: properties,
-            body: body);
-    }
-}
-public class Subscriber<T> where T : class
-{
-    private readonly IChannel _channel;
-    public bool messageReceived;
-    public string receivedMessage;
-    public CreatedUserEvent receivedEvent;
-    public Subscriber(IChannel connection)
-    {
-        _channel = connection;
-    }
-
-    public async Task Consume(string queueName)
-    {
-        await _channel.QueueDeclareAsync(queueName, durable: true, exclusive: false, autoDelete: false);
-        var consumer = new AsyncEventingBasicConsumer(_channel);
-
-        consumer.ReceivedAsync  += async (model, ea) =>
-        {
-            var receivedBody = ea.Body.ToArray();
-            receivedMessage = System.Text.Encoding.UTF8.GetString(receivedBody);
-            receivedEvent = JsonConvert.DeserializeObject<CreatedUserEvent>(receivedMessage);
-            messageReceived = true;
-            await _channel.BasicAckAsync(ea.DeliveryTag, false);
-        };
-
-        await _channel.BasicConsumeAsync(queue: queueName,
-            autoAck: false,
-            consumer: consumer);
-    }
-}
 
 public class RabbitMqIntegrationTests
 {
     private readonly RabbitMqContainer _rabbitMqContainer = new RabbitMqBuilder()
-        .WithImage("rabbitmq:3.11")
+        .WithImage("rabbitmq:3-alpine")
         .Build();
 
     [Fact]
@@ -105,7 +46,8 @@ public class RabbitMqIntegrationTests
         using var _channel = await connection.CreateChannelAsync();
         
         //Act
-        var publisher = new Publisher<CreatedUserEvent>(_channel);
+        var mock = new Mock<ILogger<Publisher<CreatedUserEvent>>>();
+        var publisher = new Publisher<CreatedUserEvent>(_channel, mock.Object);
         var subscriber = new Subscriber<CreatedUserEvent>(_channel);
         await publisher.Send(queueName, @event);
         await subscriber.Consume(queueName);

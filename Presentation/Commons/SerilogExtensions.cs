@@ -1,6 +1,6 @@
 using Serilog;
 
-namespace Presentation.Controllers;
+namespace Presentation.Commons;
 
 public static class SerilogExtensions
 {

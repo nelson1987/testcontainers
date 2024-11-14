@@ -13,15 +13,19 @@ public class ContratosController : ControllerBase
     };
 
     private readonly ILogger<ContratosController> _logger;
+    private readonly IMessageProducer<CreatedUserEvent> _checkoutProcessor;
 
-    public ContratosController(ILogger<ContratosController> logger)
+    public ContratosController(ILogger<ContratosController> logger, 
+        IMessageProducer<CreatedUserEvent> checkoutProcessor)
     {
         _logger = logger;
+        _checkoutProcessor = checkoutProcessor;
     }
 
     [HttpGet]
-    public IEnumerable<WeatherForecast> Get()
+    public async Task<IEnumerable<WeatherForecast>> Get()
     {
+        await _checkoutProcessor.SendMessage(new CreatedUserEvent(5, "John Doe", 18, true));
         return Enumerable.Range(1, 5).Select(index => new WeatherForecast
             {
                 Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
