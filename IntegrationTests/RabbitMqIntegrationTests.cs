@@ -28,15 +28,15 @@ public class RabbitMqIntegrationTests
 
         // Then
         connection.IsOpen.Should().BeTrue();
-        
+
         await _rabbitMqContainer.StopAsync();
     }
-    
+
     [Fact]
     public async Task TestPublishAndConsumeMessage()
     {
         await _rabbitMqContainer.StartAsync();
-        
+
         var queueName = "test-queue";
         var @event = new CreatedUserEvent(6, "John Doe", 18, false);
         var connectionFactory = new ConnectionFactory();
@@ -44,7 +44,7 @@ public class RabbitMqIntegrationTests
 
         using var connection = await connectionFactory.CreateConnectionAsync();
         using var _channel = await connection.CreateChannelAsync();
-        
+
         //Act
         var mock = new Mock<ILogger<Publisher<CreatedUserEvent>>>();
         var publisher = new Publisher<CreatedUserEvent>(_channel, mock.Object);
@@ -58,7 +58,7 @@ public class RabbitMqIntegrationTests
         // Assert
         subscriber.messageReceived.Should().BeTrue();
         subscriber.receivedEvent.Should().Be(@event);
-        
+
         await _rabbitMqContainer.StopAsync();
     }
 }
