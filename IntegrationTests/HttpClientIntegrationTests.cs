@@ -24,11 +24,6 @@ public class IntegrationTestWebAppFactory
     {
         _rabbitMqContainer.StartAsync().Wait();
     }
-    
-    // protected override void ConfigureClient(HttpClient client)
-    // {
-    //     base.ConfigureClient(client);       
-    // }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
