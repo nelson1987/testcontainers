@@ -2,50 +2,11 @@ using FluentAssertions;
 using Microsoft.Data.SqlClient;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Presentation.Commons;
 using Testcontainers.MsSql;
 
 namespace IntegrationTests;
-public class MyContext: DbContext
-{
-    public DbSet<User> User { get; set; }
-    public MyContext(DbContextOptions<MyContext> options) : base(options)
-    {
 
-    }
-
-    protected override void OnModelCreating(ModelBuilder modelBuilder)
-    {
-        base.OnModelCreating(modelBuilder);
-        modelBuilder.Entity<User>(e =>
-        {
-            e
-                .ToTable("TB_USER")
-                .HasKey(k => k.Id);
-
-            e
-                .Property(p => p.Id)
-                .ValueGeneratedOnAdd();
-        });
-    }
-}
-public class User
-{
-    protected User()
-    {
-
-    }
-    public User(int Id, string Name, int Age, bool IsActive)
-    {
-        this.Id = Id;
-        this.Name = Name;
-        this.Age = Age;
-        this.IsActive = IsActive;
-    }
-    public int Id { get; private set; }
-    public string Name { get; private set; }
-    public int Age { get; private set; }
-    public bool IsActive { get; private set; }
-}
 public class EFIntegrationTests
 {
     private readonly MsSqlContainer _dbContainer = new MsSqlBuilder()
