@@ -52,7 +52,7 @@ public class Customer
         ArgumentOutOfRangeException.ThrowIfLessThan(0, id);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(email);
-        ArgumentOutOfRangeException.ThrowIfLessThan(18, age);
+        //ArgumentOutOfRangeException.ThrowIfLessThan(18, age);
         Id = id;
         Name = name;
         Email = email;
