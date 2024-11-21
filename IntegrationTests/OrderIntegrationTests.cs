@@ -6,8 +6,7 @@ namespace IntegrationTests;
 
 public class OrderIntegrationTests : SharedInfrastructure
 {
-    private readonly OrderDomainService _orderDomainService;
-    private readonly IProducer<CreatedOrderEvent> producer;
+    private readonly IOrderDomainService _orderDomainService;
     private readonly IConsumer<CreatedOrderEvent> consumer;
 
     public OrderIntegrationTests(SharedTestInfrastructure infrastructure)

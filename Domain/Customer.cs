@@ -72,7 +72,8 @@ public record CreatedOrderEvent(int OrderId);
 
 public interface IOrderDomainService
 {
-    
+    Task AddOrderAsync(Order order);
+    Task<Order?> FindOrderAsync(Order order);
 }
 
 public static class CreatedOrderEventExtensions

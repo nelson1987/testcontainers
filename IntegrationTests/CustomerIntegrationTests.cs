@@ -8,7 +8,7 @@ namespace IntegrationTests;
 public class CustomerIntegrationTests : SharedInfrastructure
 {
     private const string QueueName = "customer_events";
-    private readonly CustomerRepository customerRepository;
+    private readonly ICustomerRepository customerRepository;
     private readonly IProducer<CreatedCustomerEvent> producer;
 
     public CustomerIntegrationTests(SharedTestInfrastructure infrastructure)
