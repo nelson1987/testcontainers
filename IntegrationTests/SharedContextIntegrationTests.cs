@@ -386,6 +386,25 @@ public class OrderRepository
         .FirstOrDefaultAsync(o => o.Id == order.Id);
 }
 
+public class DomainEvent<T>
+    where T : class
+{
+    public string EventType = nameof(T);
+    public string EventId = Guid.NewGuid().ToString("D");
+    public DateTime EventDate = DateTime.UtcNow;
+
+    public DomainEvent(T message)
+    {
+        Message = message;
+    }
+
+    public T Message { get; private set; }
+}
+
+public record CreatedCustomerEvent(int CustomerId);
+
+public record CreatedOrderEvent(int OrderId);
+
 // Primeira classe de testes
 public class CustomerIntegrationTests : SharedInfrastructure
 {
@@ -410,21 +429,15 @@ public class CustomerIntegrationTests : SharedInfrastructure
         await customerRepository.AddCustomerAsync(customer);
 
         // Publicar evento no RabbitMQ
-        var message = JsonSerializer.Serialize(new
-        {
-            EventType = "CustomerCreated",
-            CustomerId = customer.Id
-        });
+        var producer = new Producer<CreatedCustomerEvent>(Channel);
+        var @event = new DomainEvent<CreatedCustomerEvent>(new CreatedCustomerEvent(customer.Id));
+        var message = JsonSerializer.Serialize(@event);
         var body = Encoding.UTF8.GetBytes(message);
         var properties = new BasicProperties
         {
             Persistent = true
         };
-        await Channel.BasicPublishAsync(exchange: string.Empty,
-            routingKey: QueueName,
-            mandatory: true,
-            basicProperties: properties,
-            body: body);
+        await producer.Send(QueueName, body);
 
         // Assert
         var savedCustomer = await customerRepository.GetCustomerAsync(customer);
@@ -508,24 +521,31 @@ public class OrderIntegrationTests : SharedInfrastructure
         await _orderDomainService.AddOrderAsync(order);
 
         // Publicar evento no RabbitMQ
-        var message = JsonSerializer.Serialize(new
-        {
-            EventType = "OrderCreated",
-            OrderId = order.Id
-        });
+        var producer = new Producer<CreatedOrderEvent>(Channel);
+        var @event = new DomainEvent<CreatedOrderEvent>(new CreatedOrderEvent(order.Id));
+        var message = JsonSerializer.Serialize(@event);
         var body = Encoding.UTF8.GetBytes(message);
         var properties = new BasicProperties
         {
             Persistent = true
         };
-        await Channel.BasicPublishAsync(exchange: string.Empty,
-            routingKey: QueueName,
-            mandatory: true,
-            basicProperties: properties,
-            body: body);
+        await producer.Send(QueueName, body);
+
         // Assert
         var savedOrder = await _orderDomainService.FindOrderAsync(order);
         Assert.NotNull(savedOrder);
+    }
+}
+
+public class BrokerIntegrationTests : SharedInfrastructure
+{
+    private const string QueueName = "broker_events";
+
+    public BrokerIntegrationTests(SharedTestInfrastructure infrastructure)
+        : base(infrastructure)
+    {
+        Channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false).GetAwaiter()
+            .GetResult();
     }
 
     [Fact]
@@ -550,20 +570,43 @@ public class OrderIntegrationTests : SharedInfrastructure
             autoAck: false,
             consumer: consumer);
 
+        var producer = new Producer<object>(Channel);
         var message = JsonSerializer.Serialize(new { EventType = "TestEvent" });
         var messageBody = Encoding.UTF8.GetBytes(message);
+        await producer.Send(QueueName, messageBody);
+
+        // Assert
+        var result = await messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.True(result);
+    }
+}
+
+public class Producer<T> where T : class
+{
+    private readonly IChannel Channel;
+
+    public Producer(IChannel channel)
+    {
+        Channel = channel;
+    }
+
+    public async Task Send(DomainEvent<T> message)
+    {
+        var messageJson = JsonSerializer.Serialize(message);
+        var messageBody = Encoding.UTF8.GetBytes(messageJson);
+        await Send(message.EventType, messageBody);
+    }
+
+    public async Task Send(string queueName, byte[] message)
+    {
         var properties = new BasicProperties
         {
             Persistent = true
         };
         await Channel.BasicPublishAsync(exchange: string.Empty,
-            routingKey: QueueName,
+            routingKey: queueName,
             mandatory: true,
             basicProperties: properties,
-            body: messageBody);
-
-        // Assert
-        var result = await messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        Assert.True(result);
+            body: message);
     }
 }
