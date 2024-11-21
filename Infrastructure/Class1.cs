@@ -95,7 +95,6 @@ public class Consumer<T> : IConsumer<T> where T : class
             var message = Encoding.UTF8.GetString(body);
             messageReceived.SetResult(true);
             messageEventReceived.SetResult(message);
-            //messageEventReceived.SetResult(JsonSerializer.Deserialize<T>(message));
             await Channel.BasicAckAsync(ea.DeliveryTag, false);
         };
 
@@ -103,6 +102,11 @@ public class Consumer<T> : IConsumer<T> where T : class
         await Channel.BasicConsumeAsync(queue: queueName,
             autoAck: false,
             consumer: consumerEvent);
+    }
+
+    public async Task Consume()
+    {
+        await Consume(typeof(T).FullName);
     }
 }
 

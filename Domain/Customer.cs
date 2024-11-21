@@ -144,4 +144,5 @@ public interface IConsumer<T> where T : class
     TaskCompletionSource<bool> messageReceived { get; }
     TaskCompletionSource<string> messageEventReceived { get; }
     Task Consume(string queueName);
+    Task Consume();
 }

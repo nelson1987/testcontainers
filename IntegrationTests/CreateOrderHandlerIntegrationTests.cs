@@ -36,7 +36,7 @@ public class CreateOrderHandlerIntegrationTests : SharedInfrastructure
         await _handler.Handle(command, CancellationToken.None);
 
         // Assert
-        await consumer.Consume(typeof(CreatedOrderEvent).FullName).WaitAsync(TimeSpan.FromSeconds(5));
+        await consumer.Consume().WaitAsync(TimeSpan.FromSeconds(5));
 
         // Assert
         var messageReceived = await consumer.messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
