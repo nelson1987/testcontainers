@@ -546,12 +546,40 @@ public class BrokerIntegrationTests : SharedInfrastructure
     [Fact]
     public async Task ProcessOrder_ShouldConsumeMessage()
     {
+        var consumer = new Consumer<string>(Channel);
         // Arrange
-        var messageReceived = new TaskCompletionSource<bool>();
-        var messageEventReceived = new TaskCompletionSource<string>();
-        var consumer = new AsyncEventingBasicConsumer(Channel);
 
-        consumer.ReceivedAsync += async (model, ea) =>
+        var producer = new Producer<object>(Channel);
+        var message = JsonSerializer.Serialize(new { EventType = "TestEvent" });
+        var messageBody = Encoding.UTF8.GetBytes(message);
+        await producer.Send(QueueName, messageBody);
+
+        await consumer.Consume(QueueName).WaitAsync(TimeSpan.FromSeconds(5));
+        var messageReceived = consumer.messageReceived;
+        var messageEventReceived = consumer.messageEventReceived;
+        // Assert
+        var result = await messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.True(result);
+        var resultEvent = await messageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.Equal("TestEvent", resultEvent);
+    }
+}
+
+public class Consumer<T> where T : class
+{
+    public TaskCompletionSource<bool> messageReceived = new();
+    public TaskCompletionSource<string> messageEventReceived = new();
+    private readonly IChannel Channel;
+
+    public Consumer(IChannel channel)
+    {
+        Channel = channel;
+    }
+
+    public async Task Consume(string queueName)
+    {
+        var consumerEvent = new AsyncEventingBasicConsumer(Channel);
+        consumerEvent.ReceivedAsync += async (model, ea) =>
         {
             var body = ea.Body.ToArray();
             var message = Encoding.UTF8.GetString(body);
@@ -561,18 +589,9 @@ public class BrokerIntegrationTests : SharedInfrastructure
         };
 
         // Act
-        await Channel.BasicConsumeAsync(queue: QueueName,
+        await Channel.BasicConsumeAsync(queue: queueName,
             autoAck: false,
-            consumer: consumer);
-
-        var producer = new Producer<object>(Channel);
-        var message = JsonSerializer.Serialize(new { EventType = "TestEvent" });
-        var messageBody = Encoding.UTF8.GetBytes(message);
-        await producer.Send(QueueName, messageBody);
-
-        // Assert
-        var result = await messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        Assert.True(result);
+            consumer: consumerEvent);
     }
 }
 
