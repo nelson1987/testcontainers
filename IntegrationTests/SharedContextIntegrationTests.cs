@@ -195,7 +195,6 @@ public class SharedTestInfrastructure : IAsyncLifetime
         //
         // _serviceProvider = services.BuildServiceProvider();
         // HttpClientFactory = _serviceProvider.GetRequiredService<IHttpClientFactory>();
-
         // services.AddSingleton(sp =>
         // {
         //     var uri = new Uri(_rabbitContainer.GetConnectionString());
@@ -380,7 +379,6 @@ public class OrderRepository
         await _context.Set<Order>().AddAsync(order);
         await _context.SaveChangesAsync();
     }
-
     public async Task<Order?> GetOrderAsync(Order order) => await _context
         .Set<Order>()
         .Include(o => o.Customer)
