@@ -531,7 +531,8 @@ public class OrderIntegrationTests : SharedInfrastructure
         Assert.NotNull(savedOrder);
         
         var consumer = new Consumer<CreatedOrderEvent>(Channel);
-        await consumer.Consume(QueueName).WaitAsync(TimeSpan.FromSeconds(5));
+        
+        await consumer.Consume(nameof(CreatedOrderEvent)).WaitAsync(TimeSpan.FromSeconds(5));
         var result = await consumer.messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var resultEvent = await consumer.messageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.True(result);
