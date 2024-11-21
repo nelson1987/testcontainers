@@ -546,9 +546,10 @@ public class OrderIntegrationTests : SharedInfrastructure
         // Assert
         var messageReceived = await consumer.messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var messageEventReceived = await consumer.messageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        //var @event =JsonSerializer.Deserialize<DomainEvent<CreatedOrderEvent>>(messageEventReceived);
+        var @event = JsonSerializer.Deserialize<DomainEvent<CreatedOrderEvent>>(messageEventReceived);
         Assert.True(messageReceived);
-        Assert.Equal("{}", messageEventReceived);
+        Assert.Equal(1, @event!.Message.OrderId);
+        //Assert.Equal("{}", messageEventReceived);
     }
 }
 
