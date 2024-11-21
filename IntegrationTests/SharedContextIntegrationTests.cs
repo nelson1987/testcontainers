@@ -74,7 +74,7 @@ public class Order
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(0, id);
         //ArgumentOutOfRangeException.ThrowIfLessThan(DateTime.Today.AddDays(-1), orderDate);
-        ArgumentOutOfRangeException.ThrowIfLessThan(0.01M, total);
+        //ArgumentOutOfRangeException.ThrowIfLessThan(0.01M, total);
         Id = id;
         OrderDate = orderDate;
         Total = total;
