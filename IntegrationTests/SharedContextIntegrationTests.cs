@@ -1,10 +1,14 @@
+using System.Data.Entity.ModelConfiguration;
+using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using FluentAssertions;
+using FluentAssertions.Equivalency;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.Extensions.Logging;
 using Presentation.Commons;
 using RabbitMQ.Client;
@@ -61,23 +65,41 @@ public class TestDbContext : DbContext
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
-        modelBuilder.Entity<Customer>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.Name).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Email).IsRequired().HasMaxLength(100);
-            entity.Property(e => e.Age).IsRequired();
-        });
+        modelBuilder.ApplyConfigurationsFromAssembly(Assembly.GetExecutingAssembly());
+    }
+}
 
-        modelBuilder.Entity<Order>(entity =>
-        {
-            entity.HasKey(e => e.Id);
-            entity.Property(e => e.OrderDate).IsRequired();
-            entity.Property(e => e.Total).IsRequired().HasPrecision(18, 2);
-            entity.HasOne(e => e.Customer)
-                .WithMany(c => c.Orders)
-                .HasForeignKey(e => e.CustomerId);
-        });
+public class OrderMapConfiguration : IEntityTypeConfiguration<Order>
+{
+    public void Configure(EntityTypeBuilder<Order> builder)
+    {
+        builder.ToTable("TB_ORDER")
+            .HasKey(k => k.Id);
+        builder.Property(e => e.OrderDate)
+            .IsRequired();
+        builder.Property(e => e.Total)
+            .IsRequired()
+            .HasPrecision(18, 2);
+        builder.HasOne(e => e.Customer)
+            .WithMany(c => c.Orders)
+            .HasForeignKey(e => e.CustomerId);
+    }
+}
+
+public class CustomerMapConfiguration : IEntityTypeConfiguration<Customer>
+{
+    public void Configure(EntityTypeBuilder<Customer> builder)
+    {
+        builder.ToTable("TB_CUSTOMER")
+            .HasKey(k => k.Id);
+        builder.Property(e => e.Name)
+            .IsRequired()
+            .HasMaxLength(100);
+        builder.Property(e => e.Email)
+            .IsRequired()
+            .HasMaxLength(100);
+        builder.Property(e => e.Age)
+            .IsRequired();
     }
 }
 
@@ -287,15 +309,57 @@ public class SharedInfrastructure : IntegrationTestBase, IAsyncDisposable
     }
 }
 
+public class CustomerRepository
+{
+    private readonly TestDbContext _context;
+
+    public CustomerRepository(TestDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task AddCustomerAsync(Customer customer)
+    {
+        await _context.Set<Customer>().AddAsync(customer);
+        await _context.SaveChangesAsync();
+    }
+
+    public async Task<Customer?> GetCustomerAsync(Customer customer) => await _context
+            .Set<Customer>()
+            .FirstOrDefaultAsync(c => c.Email == customer.Email);
+
+}
+
+public class OrderRepository
+{
+    private readonly TestDbContext _context;
+
+    public OrderRepository(TestDbContext context)
+    {
+        _context = context;
+    }
+    public async Task AddOrderAsync(Order order)
+    {
+        await _context.Set<Order>().AddAsync(order);
+        await _context.SaveChangesAsync();
+    }
+    public async Task<Order?> GetOrderAsync(Order order) =>  await _context
+            .Set<Order>()
+            .Include(o => o.Customer)
+            .FirstOrDefaultAsync(o => o.Id == order.Id);
+    
+}
+
 // Primeira classe de testes
 public class CustomerIntegrationTests : SharedInfrastructure
 {
     private const string QueueName = "customer_events";
-
+    private readonly CustomerRepository customerRepository;
     public CustomerIntegrationTests(SharedTestInfrastructure infrastructure)
         : base(infrastructure)
     {
         Channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false).GetAwaiter().GetResult();
+        customerRepository = new CustomerRepository(DbContext);
     }
 
     [Fact]
@@ -305,8 +369,7 @@ public class CustomerIntegrationTests : SharedInfrastructure
         var customer = new Customer(0, "John Doe", "john@example.com", 30);
 
         // Act
-        DbContext.Set<Customer>().Add(customer);
-        await DbContext.SaveChangesAsync();
+        await customerRepository.AddCustomerAsync(customer);
 
         // Publicar evento no RabbitMQ
         var message = JsonSerializer.Serialize(new
@@ -326,8 +389,7 @@ public class CustomerIntegrationTests : SharedInfrastructure
             body: body);
 
         // Assert
-        var savedCustomer = await DbContext.Set<Customer>()
-            .FirstOrDefaultAsync(c => c.Email == customer.Email);
+        var savedCustomer = await customerRepository.GetCustomerAsync(customer);
         Assert.NotNull(savedCustomer);
     }
 
@@ -359,11 +421,15 @@ public class CustomerIntegrationTests : SharedInfrastructure
 public class OrderIntegrationTests : SharedInfrastructure
 {
     private const string QueueName = "order_events";
+    private readonly CustomerRepository customerRepository;
+    private readonly OrderRepository orderRepository;
 
     public OrderIntegrationTests(SharedTestInfrastructure infrastructure)
         : base(infrastructure)
     {
         Channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false).GetAwaiter().GetResult();
+        customerRepository = new CustomerRepository(DbContext);
+        orderRepository = new OrderRepository(DbContext);
     }
 
     [Fact]
@@ -371,15 +437,12 @@ public class OrderIntegrationTests : SharedInfrastructure
     {
         // Arrange
         var customer = new Customer(0, "John Doe", "john@example.com", 30);
-
-        DbContext.Set<Customer>().Add(customer);
-        await DbContext.SaveChangesAsync();
+        await customerRepository.AddCustomerAsync(customer);
 
         var order = new Order(0, DateTime.UtcNow, 100.50m, customer);
         
         // Act
-        DbContext.Set<Order>().Add(order);
-        await DbContext.SaveChangesAsync();
+        await orderRepository.AddOrderAsync(order);
 
         // Publicar evento no RabbitMQ
         var message = JsonSerializer.Serialize(new
@@ -399,9 +462,7 @@ public class OrderIntegrationTests : SharedInfrastructure
             body: body);
 
         // Assert
-        var savedOrder = await DbContext.Set<Order>()
-            .Include(o => o.Customer)
-            .FirstOrDefaultAsync(o => o.Id == order.Id);
+        var savedOrder = await orderRepository.GetOrderAsync(order);
         Assert.NotNull(savedOrder);
     }
 
