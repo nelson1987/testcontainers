@@ -1,9 +1,7 @@
-using System.Data.Entity.ModelConfiguration;
 using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using FluentAssertions;
-using FluentAssertions.Equivalency;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -11,6 +9,7 @@ using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
+using Presentation;
 using Presentation.Commons;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -20,7 +19,7 @@ using Testcontainers.RabbitMq;
 namespace IntegrationTests;
 
 public class IntegrationTestWebAppFactory
-    : WebApplicationFactory<Presentation.Program>, IDisposable
+    : WebApplicationFactory<Program>, IDisposable
 {
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
@@ -547,13 +546,9 @@ public class OrderIntegrationTests : SharedInfrastructure
         // Assert
         var messageReceived = await consumer.messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var messageEventReceived = await consumer.messageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var @event =JsonSerializer.Deserialize<CreatedOrderEvent>(messageEventReceived);
         Assert.True(messageReceived);
-        Assert.Equal("{\"EventType\":\"TestEvent\"}", messageEventReceived);
-        // var result = await consumer.messageReceived.Task.WaitAsync(TimeSpan.FromMinutes(1));
-        // var resultEvent = await consumer.messageEventReceived.Task.WaitAsync(TimeSpan.FromMinutes(1));
-        // var @event =JsonSerializer.Deserialize<CreatedOrderEvent>(resultEvent);
-        // Assert.True(result);
-        // Assert.Equal(order.Id, @event!.OrderId);
+        Assert.Equal(order.Id, @event!.OrderId);
     }
 }
 
