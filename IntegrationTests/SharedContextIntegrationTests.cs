@@ -9,6 +9,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
+using Microsoft.EntityFrameworkCore.Storage;
 using Microsoft.Extensions.Logging;
 using Presentation.Commons;
 using RabbitMQ.Client;
@@ -106,7 +107,8 @@ public class CustomerMapConfiguration : IEntityTypeConfiguration<Customer>
 // Modelos
 public class Customer
 {
-    protected Customer (){
+    protected Customer()
+    {
     }
 
     public Customer(int id, string name, string email, int age)
@@ -130,8 +132,10 @@ public class Customer
 
 public class Order
 {
-    protected Order (){
+    protected Order()
+    {
     }
+
     public Order(int id, DateTime orderDate, decimal total, Customer customer)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(0, id);
@@ -191,7 +195,7 @@ public class SharedTestInfrastructure : IAsyncLifetime
         //
         // _serviceProvider = services.BuildServiceProvider();
         // HttpClientFactory = _serviceProvider.GetRequiredService<IHttpClientFactory>();
-        
+
         // services.AddSingleton(sp =>
         // {
         //     var uri = new Uri(_rabbitContainer.GetConnectionString());
@@ -218,7 +222,7 @@ public class SharedTestInfrastructure : IAsyncLifetime
         // dbContext.Database.EnsureCreated();
         // dbContext.Database.Migrate();
         // services.AddScoped<IUnitOfWork, UnitOfWork>(x=> new UnitOfWork(dbContext));
-       
+
         _factory = new IntegrationTestWebAppFactory();
         Client = _factory.CreateDefaultClient();
     }
@@ -303,10 +307,43 @@ public class SharedInfrastructure : IntegrationTestBase, IAsyncDisposable
     {
         Channel = RabbitConnection.CreateChannelAsync().GetAwaiter().GetResult();
     }
+
     public async ValueTask DisposeAsync()
     {
         await Channel.DisposeAsync();
     }
+}
+
+public class UnitOfWork
+{
+    private readonly TestDbContext _context;
+    private IDbContextTransaction _dbContextTransaction;
+
+    public UnitOfWork(TestDbContext context)
+    {
+        _context = context;
+    }
+
+    public async Task BeginTransactionAsync()
+    {
+        _dbContextTransaction = await _context.Database.BeginTransactionAsync();
+    }
+
+    public async Task CommitAsync()
+    {
+        await _dbContextTransaction.CommitAsync();
+    }
+
+    public async Task RollbackAsync()
+    {
+        await _dbContextTransaction.RollbackAsync();
+    }
+
+    public CustomerRepository Customers
+        => new CustomerRepository(_context);
+
+    public OrderRepository Orders
+        => new OrderRepository(_context);
 }
 
 public class CustomerRepository
@@ -325,9 +362,8 @@ public class CustomerRepository
     }
 
     public async Task<Customer?> GetCustomerAsync(Customer customer) => await _context
-            .Set<Customer>()
-            .FirstOrDefaultAsync(c => c.Email == customer.Email);
-
+        .Set<Customer>()
+        .FirstOrDefaultAsync(c => c.Email == customer.Email);
 }
 
 public class OrderRepository
@@ -338,16 +374,17 @@ public class OrderRepository
     {
         _context = context;
     }
+
     public async Task AddOrderAsync(Order order)
     {
         await _context.Set<Order>().AddAsync(order);
         await _context.SaveChangesAsync();
     }
-    public async Task<Order?> GetOrderAsync(Order order) =>  await _context
-            .Set<Order>()
-            .Include(o => o.Customer)
-            .FirstOrDefaultAsync(o => o.Id == order.Id);
-    
+
+    public async Task<Order?> GetOrderAsync(Order order) => await _context
+        .Set<Order>()
+        .Include(o => o.Customer)
+        .FirstOrDefaultAsync(o => o.Id == order.Id);
 }
 
 // Primeira classe de testes
@@ -355,10 +392,12 @@ public class CustomerIntegrationTests : SharedInfrastructure
 {
     private const string QueueName = "customer_events";
     private readonly CustomerRepository customerRepository;
+
     public CustomerIntegrationTests(SharedTestInfrastructure infrastructure)
         : base(infrastructure)
     {
-        Channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false).GetAwaiter().GetResult();
+        Channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false).GetAwaiter()
+            .GetResult();
         customerRepository = new CustomerRepository(DbContext);
     }
 
@@ -421,49 +460,56 @@ public class CustomerIntegrationTests : SharedInfrastructure
 public class OrderIntegrationTests : SharedInfrastructure
 {
     private const string QueueName = "order_events";
-    private readonly CustomerRepository customerRepository;
-    private readonly OrderRepository orderRepository;
+    private readonly UnitOfWork UnitOfWork;
 
     public OrderIntegrationTests(SharedTestInfrastructure infrastructure)
         : base(infrastructure)
     {
-        Channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false).GetAwaiter().GetResult();
-        customerRepository = new CustomerRepository(DbContext);
-        orderRepository = new OrderRepository(DbContext);
+        Channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false).GetAwaiter()
+            .GetResult();
+        UnitOfWork = new UnitOfWork(DbContext);
     }
 
     [Fact]
     public async Task CreateOrder_ShouldPublishEvent()
     {
-        // Arrange
-        var customer = new Customer(0, "John Doe", "john@example.com", 30);
-        await customerRepository.AddCustomerAsync(customer);
-
-        var order = new Order(0, DateTime.UtcNow, 100.50m, customer);
-        
-        // Act
-        await orderRepository.AddOrderAsync(order);
-
-        // Publicar evento no RabbitMQ
-        var message = JsonSerializer.Serialize(new
+        try
         {
-            EventType = "OrderCreated",
-            OrderId = order.Id
-        });
-        var body = Encoding.UTF8.GetBytes(message);
-        var properties = new BasicProperties
-        {
-            Persistent = true
-        };
-        await Channel.BasicPublishAsync(exchange: string.Empty,
-            routingKey: QueueName,
-            mandatory: true,
-            basicProperties: properties,
-            body: body);
+            // Arrange
+            await UnitOfWork.BeginTransactionAsync();
+            var customer = new Customer(0, "John Doe", "john@example.com", 30);
+            await UnitOfWork.Customers.AddCustomerAsync(customer);
 
-        // Assert
-        var savedOrder = await orderRepository.GetOrderAsync(order);
-        Assert.NotNull(savedOrder);
+            var order = new Order(0, DateTime.UtcNow, 100.50m, customer);
+
+            // Act
+            await UnitOfWork.Orders.AddOrderAsync(order);
+            await UnitOfWork.CommitAsync();
+
+            // Publicar evento no RabbitMQ
+            var message = JsonSerializer.Serialize(new
+            {
+                EventType = "OrderCreated",
+                OrderId = order.Id
+            });
+            var body = Encoding.UTF8.GetBytes(message);
+            var properties = new BasicProperties
+            {
+                Persistent = true
+            };
+            await Channel.BasicPublishAsync(exchange: string.Empty,
+                routingKey: QueueName,
+                mandatory: true,
+                basicProperties: properties,
+                body: body);
+            // Assert
+            var savedOrder = await UnitOfWork.Orders.GetOrderAsync(order);
+            Assert.NotNull(savedOrder);
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackAsync();
+        }
     }
 
     [Fact]
