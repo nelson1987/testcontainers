@@ -28,7 +28,8 @@
 
     <ItemGroup>
       <ProjectReference Include="..\Domain\Domain.csproj" />
-      <ProjectReference Include="..\Presentation\Presentation.csproj" />
+        <ProjectReference Include="..\Presentation\Presentation.csproj" />
+        <ProjectReference Include="..\Infrastructure\Infrastructure.csproj" />
     </ItemGroup>
 
     <ItemGroup>
