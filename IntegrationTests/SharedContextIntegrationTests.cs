@@ -431,13 +431,8 @@ public class CustomerIntegrationTests : SharedInfrastructure
         // Publicar evento no RabbitMQ
         var producer = new Producer<CreatedCustomerEvent>(Channel);
         var @event = new DomainEvent<CreatedCustomerEvent>(new CreatedCustomerEvent(customer.Id));
-        var message = JsonSerializer.Serialize(@event);
-        var body = Encoding.UTF8.GetBytes(message);
-        var properties = new BasicProperties
-        {
-            Persistent = true
-        };
-        await producer.Send(QueueName, body);
+
+        await producer.Send(@event);
 
         // Assert
         var savedCustomer = await customerRepository.GetCustomerAsync(customer);
@@ -523,13 +518,8 @@ public class OrderIntegrationTests : SharedInfrastructure
         // Publicar evento no RabbitMQ
         var producer = new Producer<CreatedOrderEvent>(Channel);
         var @event = new DomainEvent<CreatedOrderEvent>(new CreatedOrderEvent(order.Id));
-        var message = JsonSerializer.Serialize(@event);
-        var body = Encoding.UTF8.GetBytes(message);
-        var properties = new BasicProperties
-        {
-            Persistent = true
-        };
-        await producer.Send(QueueName, body);
+
+        await producer.Send(@event);
 
         // Assert
         var savedOrder = await _orderDomainService.FindOrderAsync(order);
