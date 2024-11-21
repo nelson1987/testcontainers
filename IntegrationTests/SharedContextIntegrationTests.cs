@@ -379,6 +379,7 @@ public class OrderRepository
         await _context.Set<Order>().AddAsync(order);
         await _context.SaveChangesAsync();
     }
+
     public async Task<Order?> GetOrderAsync(Order order) => await _context
         .Set<Order>()
         .Include(o => o.Customer)
@@ -454,60 +455,77 @@ public class CustomerIntegrationTests : SharedInfrastructure
     }
 }
 
+public class OrderDomainService
+{
+    private readonly UnitOfWork _unitOfWork;
+
+    public OrderDomainService(UnitOfWork unitOfWork)
+    {
+        _unitOfWork = unitOfWork;
+    }
+
+    public async Task AddOrderAsync(Order order)
+    {
+        try
+        {
+            await _unitOfWork.BeginTransactionAsync();
+            await _unitOfWork.Customers.AddCustomerAsync(order.Customer);
+            await _unitOfWork.Orders.AddOrderAsync(order);
+            await _unitOfWork.CommitAsync();
+        }
+        catch (Exception ex)
+        {
+            await _unitOfWork.RollbackAsync();
+        }
+    }
+
+    public async Task<Order?> FindOrderAsync(Order order)
+        => await _unitOfWork.Orders.GetOrderAsync(order);
+}
+
 // Segunda classe de testes
 public class OrderIntegrationTests : SharedInfrastructure
 {
     private const string QueueName = "order_events";
-    private readonly UnitOfWork UnitOfWork;
+    private readonly OrderDomainService _orderDomainService;
 
     public OrderIntegrationTests(SharedTestInfrastructure infrastructure)
         : base(infrastructure)
     {
         Channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false).GetAwaiter()
             .GetResult();
-        UnitOfWork = new UnitOfWork(DbContext);
+        _orderDomainService = new OrderDomainService(new UnitOfWork(DbContext));
     }
 
     [Fact]
     public async Task CreateOrder_ShouldPublishEvent()
     {
-        try
+        // Arrange
+        var customer = new Customer(0, "John Doe", "john@example.com", 30);
+        var order = new Order(0, DateTime.UtcNow, 100.50m, customer);
+
+        // Act
+        await _orderDomainService.AddOrderAsync(order);
+
+        // Publicar evento no RabbitMQ
+        var message = JsonSerializer.Serialize(new
         {
-            // Arrange
-            await UnitOfWork.BeginTransactionAsync();
-            var customer = new Customer(0, "John Doe", "john@example.com", 30);
-            await UnitOfWork.Customers.AddCustomerAsync(customer);
-
-            var order = new Order(0, DateTime.UtcNow, 100.50m, customer);
-
-            // Act
-            await UnitOfWork.Orders.AddOrderAsync(order);
-            await UnitOfWork.CommitAsync();
-
-            // Publicar evento no RabbitMQ
-            var message = JsonSerializer.Serialize(new
-            {
-                EventType = "OrderCreated",
-                OrderId = order.Id
-            });
-            var body = Encoding.UTF8.GetBytes(message);
-            var properties = new BasicProperties
-            {
-                Persistent = true
-            };
-            await Channel.BasicPublishAsync(exchange: string.Empty,
-                routingKey: QueueName,
-                mandatory: true,
-                basicProperties: properties,
-                body: body);
-            // Assert
-            var savedOrder = await UnitOfWork.Orders.GetOrderAsync(order);
-            Assert.NotNull(savedOrder);
-        }
-        catch (Exception ex)
+            EventType = "OrderCreated",
+            OrderId = order.Id
+        });
+        var body = Encoding.UTF8.GetBytes(message);
+        var properties = new BasicProperties
         {
-            await UnitOfWork.RollbackAsync();
-        }
+            Persistent = true
+        };
+        await Channel.BasicPublishAsync(exchange: string.Empty,
+            routingKey: QueueName,
+            mandatory: true,
+            basicProperties: properties,
+            body: body);
+        // Assert
+        var savedOrder = await _orderDomainService.FindOrderAsync(order);
+        Assert.NotNull(savedOrder);
     }
 
     [Fact]
