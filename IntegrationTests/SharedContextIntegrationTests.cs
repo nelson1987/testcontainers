@@ -569,7 +569,7 @@ public class BrokerIntegrationTests : SharedInfrastructure
         //var result = await messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.True(messageReceived);
         //var resultEvent = await messageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        Assert.Equal("\"{\"EventType\":\"TestEvent\"}\"", messageEventReceived);
+        Assert.Equal("{\"EventType\":\"TestEvent\"}", messageEventReceived);
     }
 }
 
