@@ -2,6 +2,7 @@ using System.Reflection;
 using System.Text;
 using System.Text.Json;
 using FluentAssertions;
+using FluentAssertions.Extensions;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -112,10 +113,10 @@ public class Customer
 
     public Customer(int id, string name, string email, int age)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThan(0, id);
+        ArgumentOutOfRangeException.ThrowIfLessThan(id, 0);
         ArgumentException.ThrowIfNullOrWhiteSpace(name);
         ArgumentException.ThrowIfNullOrWhiteSpace(email);
-        //ArgumentOutOfRangeException.ThrowIfLessThan(18, age);
+        ArgumentOutOfRangeException.ThrowIfLessThan(age, 18);
         Id = id;
         Name = name;
         Email = email;
@@ -129,6 +130,102 @@ public class Customer
     public List<Order> Orders { get; set; } = new();
 }
 
+public class CustomerUnitTests
+{
+    [Fact]
+    public void ConstructingCustomer_ShouldCreateCorrectly()
+    {
+        var customer = new Customer(1, "John", "Doe", 22);
+        customer.Id.Should().Be(1);
+        customer.Name.Should().Be("John");
+        customer.Email.Should().Be("Doe");
+        customer.Age.Should().Be(22);
+    }
+
+    [Fact]
+    public void ConstructingCustomer_ShouldHaveIdGreaterThanZero()
+    {
+        var customer = () => new Customer(-1, "John", "Doe", 22);
+        customer.Should().Throw<ArgumentOutOfRangeException>();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("  ")]
+    [InlineData(null)]
+    public void ConstructingCustomer_ShouldHaveName(string name)
+    {
+        var customer = () => new Customer(0, name, "Doe", 22);
+        customer.Should().Throw<ArgumentException>();
+    }
+
+    [Theory]
+    [InlineData("")]
+    [InlineData(" ")]
+    [InlineData("  ")]
+    [InlineData(null)]
+    public void ConstructingCustomer_ShouldHaveEmail(string email)
+    {
+        var customer = () => new Customer(0, "John", email, 22);
+        customer.Should().Throw<ArgumentException>();
+    }
+
+    [Theory]
+    [InlineData(0)]
+    [InlineData(1)]
+    [InlineData(-1)]
+    [InlineData(17)]
+    public void ConstructingCustomer_ShouldHaveAgeGreaterThan18(int age)
+    {
+        var customer = () => new Customer(0, "John", "Doe", age);
+        customer.Should().Throw<ArgumentOutOfRangeException>();
+    }
+}
+
+public class OrderUnitTests
+{
+    private static readonly Customer customer = new Customer(1, "John", "Doe", 22);
+
+    [Fact]
+    public void ConstructingOrder_ShouldCreateCorrectly()
+    {
+        var order = new Order(0, DateTime.UtcNow, 0.01M,customer);
+        order.Id.Should().Be(0);
+        order.OrderDate.Should().BeCloseTo(DateTime.UtcNow, 1.Seconds());
+        order.Total.Should().Be(0.01M);
+        order.Customer.Id.Should().Be(customer.Id);
+    }
+    
+    [Fact]
+    public void ConstructingCustomer_ShouldHaveIdGreaterThanZero()
+    {
+        var order = () => new Order(-1, DateTime.UtcNow, 0.01M,customer);
+        order.Should().Throw<ArgumentOutOfRangeException>();
+    }
+    
+    [Fact]
+    public void ConstructingCustomer_ShouldHaveIdOrderDataGreaterThanNow()
+    {
+        var order = () => new Order(0, DateTime.UtcNow.AddSeconds(-5), 0.01M,customer);
+        order.Should().Throw<ArgumentOutOfRangeException>();
+    }
+    
+    [Fact]
+    public void ConstructingCustomer_ShouldHaveIdTotalGreaterThanZero()
+    {
+        var order = () => new Order(0, DateTime.UtcNow, -0.01M,customer);
+        order.Should().Throw<ArgumentOutOfRangeException>();
+    }
+    
+    [Fact]
+    public void ConstructingCustomer_ShouldHaveRequiredCustomer()
+    {
+        var order = () => new Order(0, DateTime.UtcNow, 0.01M,null);
+        order.Should().Throw<ArgumentNullException>();
+    }
+}
+
 public class Order
 {
     protected Order()
@@ -137,9 +234,10 @@ public class Order
 
     public Order(int id, DateTime orderDate, decimal total, Customer customer)
     {
-        ArgumentOutOfRangeException.ThrowIfLessThan(0, id);
-        //ArgumentOutOfRangeException.ThrowIfLessThan(DateTime.Today.AddDays(-1), orderDate);
-        //ArgumentOutOfRangeException.ThrowIfLessThan(0.01M, total);
+        ArgumentOutOfRangeException.ThrowIfLessThan(id, 0);
+        ArgumentOutOfRangeException.ThrowIfLessThan(orderDate,DateTime.UtcNow.AddSeconds(-5));
+        ArgumentOutOfRangeException.ThrowIfLessThan(total,0.01M);
+        ArgumentNullException.ThrowIfNull(customer);
         Id = id;
         OrderDate = orderDate;
         Total = total;
@@ -502,7 +600,6 @@ public static class CreatedOrderEventExtensions
 // Segunda classe de testes
 public class OrderIntegrationTests : SharedInfrastructure
 {
-    private const string QueueName = "order_events";
     private readonly OrderDomainService _orderDomainService;
     private readonly Producer<CreatedOrderEvent> producer;
     private readonly Consumer<CreatedOrderEvent> consumer;
@@ -510,7 +607,8 @@ public class OrderIntegrationTests : SharedInfrastructure
     public OrderIntegrationTests(SharedTestInfrastructure infrastructure)
         : base(infrastructure)
     {
-        Channel.QueueDeclareAsync(typeof(CreatedOrderEvent).FullName, durable: true, exclusive: false, autoDelete: false)
+        Channel.QueueDeclareAsync(typeof(CreatedOrderEvent).FullName, durable: true, exclusive: false,
+                autoDelete: false)
             .GetAwaiter()
             .GetResult();
         _orderDomainService = new OrderDomainService(
@@ -528,10 +626,12 @@ public class OrderIntegrationTests : SharedInfrastructure
 
         // Act
         await _orderDomainService.AddOrderAsync(order);
+
         // Assert
         var savedOrder = await _orderDomainService.FindOrderAsync(order);
         Assert.NotNull(savedOrder);
     }
+
     [Fact]
     public async Task CreateOrder_ShouldPublishEvent()
     {
@@ -542,14 +642,13 @@ public class OrderIntegrationTests : SharedInfrastructure
         // Act
         await _orderDomainService.AddOrderAsync(order);
         await consumer.Consume(typeof(CreatedOrderEvent).FullName).WaitAsync(TimeSpan.FromSeconds(5));
-        
+
         // Assert
         var messageReceived = await consumer.messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var messageEventReceived = await consumer.messageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var @event = JsonSerializer.Deserialize<DomainEvent<CreatedOrderEvent>>(messageEventReceived);
         Assert.True(messageReceived);
         Assert.Equal(1, @event!.Message.OrderId);
-        //Assert.Equal("{}", messageEventReceived);
     }
 }
 
@@ -567,16 +666,16 @@ public class BrokerIntegrationTests : SharedInfrastructure
     [Fact]
     public async Task ProcessOrder_ShouldConsumeMessage()
     {
-        var consumer = new Consumer<string>(Channel);
         // Arrange
-
+        var consumer = new Consumer<string>(Channel);
         var producer = new Producer<object>(Channel);
         var message = JsonSerializer.Serialize(new { EventType = "TestEvent" });
         var messageBody = Encoding.UTF8.GetBytes(message);
         await producer.Send(QueueName, messageBody);
 
+        // Act
         await consumer.Consume(QueueName).WaitAsync(TimeSpan.FromSeconds(5));
-        
+
         // Assert
         var messageReceived = await consumer.messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var messageEventReceived = await consumer.messageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
