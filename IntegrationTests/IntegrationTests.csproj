@@ -45,6 +45,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Domain\" />
+      <EmbeddedResource Remove="Domain\**" />
     </ItemGroup>
 </Project>
