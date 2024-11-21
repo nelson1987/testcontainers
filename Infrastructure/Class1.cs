@@ -149,11 +149,6 @@ public class UnitOfWork : IUnitOfWork
         _dbContextTransaction = _context.Database.BeginTransaction();
     }
 
-    public async Task BeginTransactionAsync()
-    {
-        _dbContextTransaction = await _context.Database.BeginTransactionAsync();
-    }
-
     public async Task CommitAsync()
     {
         await _dbContextTransaction.CommitAsync();

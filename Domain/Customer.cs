@@ -115,7 +115,6 @@ public class OrderDomainService : IOrderDomainService
 
 public interface IUnitOfWork
 {
-    Task BeginTransactionAsync();
     Task CommitAsync();
     Task RollbackAsync();
     ICustomerRepository Customers { get; }
