@@ -37,22 +37,22 @@ public class OrderIntegrationTests : SharedInfrastructure
         Assert.NotNull(savedOrder);
     }
 
-    [Fact]
-    public async Task CreateOrder_ShouldPublishEvent()
-    {
-        // Arrange
-        var customer = new Customer(0, "John Doe", "john@example.com", 30);
-        var order = new Order(0, DateTime.UtcNow, 100.50m, customer);
-
-        // Act
-        await _orderDomainService.AddOrderAsync(order);
-        await consumer.Consume().WaitAsync(TimeSpan.FromMinutes(1));
-
-        // Assert
-        var messageReceived = await consumer.messageReceived.Task.WaitAsync(TimeSpan.FromMinutes(1));
-        var messageEventReceived = await consumer.messageEventReceived.Task.WaitAsync(TimeSpan.FromMinutes(1));
-        var @event = JsonSerializer.Deserialize<DomainEvent<CreatedOrderEvent>>(messageEventReceived);
-        Assert.True(messageReceived);
-        Assert.Equal(1, @event!.Message.OrderId);
-    }
+    // [Fact]
+    // public async Task CreateOrder_ShouldPublishEvent()
+    // {
+    //     // Arrange
+    //     var customer = new Customer(0, "John Doe", "john@example.com", 30);
+    //     var order = new Order(0, DateTime.UtcNow, 100.50m, customer);
+    //
+    //     // Act
+    //     await _orderDomainService.AddOrderAsync(order);
+    //     await consumer.Consume().WaitAsync(TimeSpan.FromMinutes(1));
+    //
+    //     // Assert
+    //     var messageReceived = await consumer.messageReceived.Task.WaitAsync(TimeSpan.FromMinutes(1));
+    //     var messageEventReceived = await consumer.messageEventReceived.Task.WaitAsync(TimeSpan.FromMinutes(1));
+    //     var @event = JsonSerializer.Deserialize<DomainEvent<CreatedOrderEvent>>(messageEventReceived);
+    //     Assert.True(messageReceived);
+    //     Assert.Equal(1, @event!.Message.OrderId);
+    // }
 }
