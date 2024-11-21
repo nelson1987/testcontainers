@@ -410,7 +410,7 @@ public class CustomerIntegrationTests : SharedInfrastructure
 {
     private const string QueueName = "customer_events";
     private readonly CustomerRepository customerRepository;
-    private readonly Producer<CreatedCustomerEvent>  producer;
+    private readonly Producer<CreatedCustomerEvent> producer;
 
     public CustomerIntegrationTests(SharedTestInfrastructure infrastructure)
         : base(infrastructure)
@@ -466,10 +466,12 @@ public class CustomerIntegrationTests : SharedInfrastructure
 public class OrderDomainService
 {
     private readonly UnitOfWork _unitOfWork;
+    private readonly Producer<CreatedOrderEvent> _createdOrderproducer;
 
-    public OrderDomainService(UnitOfWork unitOfWork)
+    public OrderDomainService(UnitOfWork unitOfWork, Producer<CreatedOrderEvent> createdOrderproducer)
     {
         _unitOfWork = unitOfWork;
+        _createdOrderproducer = createdOrderproducer;
     }
 
     public async Task AddOrderAsync(Order order)
@@ -480,6 +482,7 @@ public class OrderDomainService
             await _unitOfWork.Customers.AddCustomerAsync(order.Customer);
             await _unitOfWork.Orders.AddOrderAsync(order);
             await _unitOfWork.CommitAsync();
+            await _createdOrderproducer.Send(order.ToCreatedEvent());
         }
         catch (Exception ex)
         {
@@ -491,20 +494,27 @@ public class OrderDomainService
         => await _unitOfWork.Orders.GetOrderAsync(order);
 }
 
+public static class CreatedOrderEventExtensions
+{
+    public static DomainEvent<CreatedOrderEvent> ToCreatedEvent(this Order order)
+        => new DomainEvent<CreatedOrderEvent>(new CreatedOrderEvent(order.Id));
+}
+
 // Segunda classe de testes
 public class OrderIntegrationTests : SharedInfrastructure
 {
     private const string QueueName = "order_events";
     private readonly OrderDomainService _orderDomainService;
-    private readonly Producer<CreatedOrderEvent>  producer;
+    private readonly Producer<CreatedOrderEvent> producer;
 
     public OrderIntegrationTests(SharedTestInfrastructure infrastructure)
         : base(infrastructure)
     {
         Channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false).GetAwaiter()
             .GetResult();
-        _orderDomainService = new OrderDomainService(new UnitOfWork(DbContext));
-        producer = new Producer<CreatedOrderEvent>(Channel);
+        _orderDomainService = new OrderDomainService(
+            new UnitOfWork(DbContext),
+            new Producer<CreatedOrderEvent>(Channel));
     }
 
     [Fact]
@@ -516,12 +526,6 @@ public class OrderIntegrationTests : SharedInfrastructure
 
         // Act
         await _orderDomainService.AddOrderAsync(order);
-
-        // Publicar evento no RabbitMQ
-        var @event = new DomainEvent<CreatedOrderEvent>(new CreatedOrderEvent(order.Id));
-
-        await producer.Send(@event);
-
         // Assert
         var savedOrder = await _orderDomainService.FindOrderAsync(order);
         Assert.NotNull(savedOrder);
