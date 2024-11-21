@@ -14,7 +14,7 @@ namespace Infrastructure;
 
 public static class Dependencies
 {
-    public static IServiceCollection AddInfrastructure(this IServiceCollection services, IConfiguration configuration)
+    public static IServiceCollection AddInfrastructure(this IServiceCollection services)//, IConfiguration configuration)
     {
         services.AddScoped(typeof(IConsumer<>), typeof(Consumer<>));
         services.AddScoped(typeof(IProducer<>), typeof(Producer<>));

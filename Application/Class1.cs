@@ -8,7 +8,9 @@ public static class Dependencies
 {
     public static IServiceCollection AddApplication(this IServiceCollection services)
     {
-        services.AddScoped<IValidator<CreateOrderCommand>, CreateOrderValidator>();
+        services
+            .AddScoped<IValidator<CreateOrderCommand>, CreateOrderValidator>()
+            .AddScoped<ICreateOrderHandler, CreateOrderHandler>();
         return services;
     }
 }
@@ -34,7 +36,13 @@ public class CreateOrderValidator : AbstractValidator<CreateOrderCommand>
         RuleFor(x => x.OrderTotal).GreaterThan(0);
     }
 }
-public class CreateOrderHandler
+
+public interface ICreateOrderHandler
+{
+    Task Handle(CreateOrderCommand command, CancellationToken cancellationToken);
+}
+
+public class CreateOrderHandler: ICreateOrderHandler
 {
     private readonly IOrderDomainService _orderDomainService;
     private readonly IValidator<CreateOrderCommand> _validator;
