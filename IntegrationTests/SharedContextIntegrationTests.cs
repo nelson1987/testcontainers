@@ -517,7 +517,7 @@ public class OrderIntegrationTests : SharedInfrastructure
             new Producer<CreatedOrderEvent>(Channel));
     }
 
-    [Fact(Skip = "Integration tests fails on CI")]
+    [Fact]
     public async Task CreateOrder_ShouldPublishEvent()
     {
         // Arrange
