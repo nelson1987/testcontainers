@@ -1,8 +1,10 @@
 using System.Text;
 using System.Text.Json;
 using FluentAssertions;
+using Microsoft.AspNetCore.Hosting;
+using Microsoft.AspNetCore.Mvc.Testing;
+using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
 using Presentation.Commons;
 using RabbitMQ.Client;
@@ -11,6 +13,44 @@ using Testcontainers.MsSql;
 using Testcontainers.RabbitMq;
 
 namespace IntegrationTests;
+
+public class IntegrationTestWebAppFactory
+    : WebApplicationFactory<Presentation.Program>, IDisposable
+{
+    protected override void ConfigureWebHost(IWebHostBuilder builder)
+    {
+        builder.ConfigureTestServices(services =>
+        {
+            // services.RemoveAll<ConnectionFactory>();
+            // services.AddSingleton(sp =>
+            // {
+            //     var uri = new Uri(_rabbitMqContainer.GetConnectionString());
+            //     return new ConnectionFactory()
+            //     {
+            //         Uri = uri,
+            //     };
+            // });
+            // var connectionString = new SqlConnectionStringBuilder(_dbContainer.GetConnectionString());
+            // connectionString.InitialCatalog = Guid.NewGuid().ToString("D");
+            //
+            // var serviceProvider = new ServiceCollection()
+            //     .AddEntityFrameworkSqlServer()
+            //     .BuildServiceProvider();
+            //
+            // var builder = new DbContextOptionsBuilder<MyContext>();
+            // var options = builder
+            //     .UseSqlServer(connectionString.ToString())
+            //     .UseInternalServiceProvider(serviceProvider)
+            //     .Options;
+            //
+            // MyContext dbContext = new MyContext(options);
+            // dbContext.Database.EnsureDeleted();
+            // dbContext.Database.EnsureCreated();
+            // dbContext.Database.Migrate();
+            // services.AddScoped<IUnitOfWork, UnitOfWork>(x=> new UnitOfWork(dbContext));
+        });
+    }
+}
 
 // Classe de contexto do EF Core
 public class TestDbContext : DbContext
@@ -120,7 +160,7 @@ public class SharedTestInfrastructure : IAsyncLifetime
             .Build();
 
         // Configuração do HttpClient com DI
-        // var services = new ServiceCollection();
+        //var services = new ServiceCollection();
         // services.AddHttpClient("TestClient", client =>
         // {
         //     client.BaseAddress = new Uri("https://api.example.com/");
@@ -129,6 +169,34 @@ public class SharedTestInfrastructure : IAsyncLifetime
         //
         // _serviceProvider = services.BuildServiceProvider();
         // HttpClientFactory = _serviceProvider.GetRequiredService<IHttpClientFactory>();
+        
+        // services.AddSingleton(sp =>
+        // {
+        //     var uri = new Uri(_rabbitContainer.GetConnectionString());
+        //     return new ConnectionFactory()
+        //     {
+        //         Uri = uri,
+        //     };
+        // });
+        // var connectionString = new SqlConnectionStringBuilder(_sqlContainer.GetConnectionString());
+        // connectionString.InitialCatalog = Guid.NewGuid().ToString("D");
+        //
+        // var serviceProvider = new ServiceCollection()
+        //     .AddEntityFrameworkSqlServer()
+        //     .BuildServiceProvider();
+        //
+        // var builder = new DbContextOptionsBuilder<MyContext>();
+        // var options = builder
+        //     .UseSqlServer(connectionString.ToString())
+        //     .UseInternalServiceProvider(serviceProvider)
+        //     .Options;
+        //
+        // MyContext dbContext = new MyContext(options);
+        // dbContext.Database.EnsureDeleted();
+        // dbContext.Database.EnsureCreated();
+        // dbContext.Database.Migrate();
+        // services.AddScoped<IUnitOfWork, UnitOfWork>(x=> new UnitOfWork(dbContext));
+       
         _factory = new IntegrationTestWebAppFactory();
         Client = _factory.CreateDefaultClient();
     }
@@ -155,6 +223,7 @@ public class SharedTestInfrastructure : IAsyncLifetime
 
         await using var context = new TestDbContext(options);
         await context.Database.EnsureCreatedAsync();
+        await context.Database.MigrateAsync();
     }
 
     public async Task DisposeAsync()
