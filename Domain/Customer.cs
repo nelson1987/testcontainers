@@ -97,7 +97,6 @@ public class OrderDomainService : IOrderDomainService
     {
         try
         {
-            await _unitOfWork.BeginTransactionAsync();
             await _unitOfWork.Customers.AddCustomerAsync(order.Customer);
             await _unitOfWork.Orders.AddOrderAsync(order);
             await _unitOfWork.CommitAsync();
