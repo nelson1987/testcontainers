@@ -30,8 +30,8 @@ public class BrokerIntegrationTests : SharedInfrastructure
         await consumer.Consume(QueueName).WaitAsync(TimeSpan.FromSeconds(5));
 
         // Assert
-        var messageReceived = await consumer.messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        var messageEventReceived = await consumer.messageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var messageReceived = await consumer.MessageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var messageEventReceived = await consumer.MessageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.True(messageReceived);
         Assert.Equal("{\"EventType\":\"TestEvent\"}", messageEventReceived);
     }

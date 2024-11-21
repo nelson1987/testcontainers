@@ -186,7 +186,7 @@ public class UserDomainService : IUserDomainService
             await _unitOfWork.Users.InsertAsync(user);
             await _unitOfWork.CommitAsync();
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             await _unitOfWork.RollbackAsync();
         }

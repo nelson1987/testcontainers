@@ -54,7 +54,7 @@ public class Order
 public class DomainEvent<T>
     where T : class
 {
-    public string EventType = typeof(T).FullName;
+    public string EventType = typeof(T).FullName!;
     public string EventId = Guid.NewGuid().ToString("D");
     public DateTime EventDate = DateTime.UtcNow;
 
@@ -103,9 +103,10 @@ public class OrderDomainService : IOrderDomainService
             await _unitOfWork.CommitAsync();
             await _createdOrderProducer.Send(order.ToCreatedEvent());
         }
-        catch (Exception ex)
+        catch (Exception)
         {
             await _unitOfWork.RollbackAsync();
+            throw;
         }
     }
 
@@ -141,8 +142,8 @@ public interface IProducer<T> where T : class
 
 public interface IConsumer<T> where T : class
 {
-    TaskCompletionSource<bool> messageReceived { get; }
-    TaskCompletionSource<string> messageEventReceived { get; }
+    TaskCompletionSource<bool> MessageReceived { get; }
+    TaskCompletionSource<string> MessageEventReceived { get; }
     Task Consume(string queueName);
     Task Consume();
 }

@@ -8,16 +8,16 @@ namespace IntegrationTests;
 public class CustomerIntegrationTests : SharedInfrastructure
 {
     private const string QueueName = "customer_events";
-    private readonly ICustomerRepository customerRepository;
-    private readonly IProducer<CreatedCustomerEvent> producer;
+    private readonly ICustomerRepository _customerRepository;
+    private readonly IProducer<CreatedCustomerEvent> _producer;
 
     public CustomerIntegrationTests(SharedTestInfrastructure infrastructure)
         : base(infrastructure)
     {
         Channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false).GetAwaiter()
             .GetResult();
-        customerRepository = new CustomerRepository(DbContext);
-        producer = new Producer<CreatedCustomerEvent>(Channel);
+        _customerRepository = new CustomerRepository(DbContext);
+        _producer = new Producer<CreatedCustomerEvent>(Channel);
     }
 
     [Fact]
@@ -27,14 +27,14 @@ public class CustomerIntegrationTests : SharedInfrastructure
         var customer = new Customer(0, "John Doe", "john@example.com", 30);
 
         // Act
-        await customerRepository.AddCustomerAsync(customer);
+        await _customerRepository.AddCustomerAsync(customer);
 
         // Publicar evento no RabbitMQ
         var @event = new DomainEvent<CreatedCustomerEvent>(new CreatedCustomerEvent(customer.Id));
-        await producer.Send(@event);
+        await _producer.Send(@event);
 
         // Assert
-        var savedCustomer = await customerRepository.GetCustomerAsync(customer);
+        var savedCustomer = await _customerRepository.GetCustomerAsync(customer);
         Assert.NotNull(savedCustomer);
     }
 

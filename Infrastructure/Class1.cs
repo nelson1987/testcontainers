@@ -5,7 +5,6 @@ using Domain;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Metadata.Builders;
 using Microsoft.EntityFrameworkCore.Storage;
-using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 using RabbitMQ.Client;
 using RabbitMQ.Client.Events;
@@ -73,32 +72,32 @@ public class CustomerMapConfiguration : IEntityTypeConfiguration<Customer>
 
 public class Consumer<T> : IConsumer<T> where T : class
 {
-    public TaskCompletionSource<bool> messageReceived { get; }
-    public TaskCompletionSource<string> messageEventReceived { get; }
+    public TaskCompletionSource<bool> MessageReceived { get; }
+    public TaskCompletionSource<string> MessageEventReceived { get; }
 
-    private readonly IChannel Channel;
+    private readonly IChannel _channel;
 
     public Consumer(IChannel channel)
     {
-        Channel = channel;
-        messageReceived = new();
-        messageEventReceived = new();
+        _channel = channel;
+        MessageReceived = new();
+        MessageEventReceived = new();
     }
 
     public async Task Consume(string queueName)
     {
-        var consumerEvent = new AsyncEventingBasicConsumer(Channel);
+        var consumerEvent = new AsyncEventingBasicConsumer(_channel);
         consumerEvent.ReceivedAsync += async (model, ea) =>
         {
             var body = ea.Body.ToArray();
             var message = Encoding.UTF8.GetString(body);
-            messageReceived.SetResult(true);
-            messageEventReceived.SetResult(message);
-            await Channel.BasicAckAsync(ea.DeliveryTag, false);
+            MessageReceived.SetResult(true);
+            MessageEventReceived.SetResult(message);
+            await _channel.BasicAckAsync(ea.DeliveryTag, false);
         };
 
         // Act
-        await Channel.BasicConsumeAsync(queue: queueName,
+        await _channel.BasicConsumeAsync(queue: queueName,
             autoAck: false,
             consumer: consumerEvent);
     }
@@ -111,11 +110,11 @@ public class Consumer<T> : IConsumer<T> where T : class
 
 public class Producer<T> : IProducer<T> where T : class
 {
-    private readonly IChannel Channel;
+    private readonly IChannel _channel;
 
     public Producer(IChannel channel)
     {
-        Channel = channel;
+        _channel = channel;
     }
 
     public async Task Send(DomainEvent<T> message)
@@ -131,7 +130,7 @@ public class Producer<T> : IProducer<T> where T : class
         {
             Persistent = true
         };
-        await Channel.BasicPublishAsync(exchange: string.Empty,
+        await _channel.BasicPublishAsync(exchange: string.Empty,
             routingKey: queueName,
             mandatory: true,
             basicProperties: properties,
@@ -147,6 +146,7 @@ public class UnitOfWork : IUnitOfWork
     public UnitOfWork(TestDbContext context)
     {
         _context = context;
+        _dbContextTransaction = _context.Database.BeginTransaction();
     }
 
     public async Task BeginTransactionAsync()

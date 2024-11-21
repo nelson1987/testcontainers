@@ -14,7 +14,6 @@ public class SharedTestInfrastructure : IAsyncLifetime
 
     // private readonly IServiceProvider _serviceProvider;
     // private readonly HttpClient _httpClient;
-    private readonly IntegrationTestWebAppFactory _factory;
     public string SqlConnectionString { get; private set; }
 
     public IConnection RabbitConnection { get; private set; }
@@ -34,7 +33,7 @@ public class SharedTestInfrastructure : IAsyncLifetime
             .WithUsername("guest")
             .WithPassword("guest")
             .Build();
-
+        
         // Configuração do HttpClient com DI
         //var services = new ServiceCollection();
         // services.AddHttpClient("TestClient", client =>
@@ -71,9 +70,8 @@ public class SharedTestInfrastructure : IAsyncLifetime
         // dbContext.Database.EnsureCreated();
         // dbContext.Database.Migrate();
         // services.AddScoped<IUnitOfWork, UnitOfWork>(x=> new UnitOfWork(dbContext));
-
-        _factory = new IntegrationTestWebAppFactory();
-        Client = _factory.CreateDefaultClient();
+        var factory = new IntegrationTestWebAppFactory();
+        Client = factory.CreateDefaultClient();
     }
 
     public async Task InitializeAsync()

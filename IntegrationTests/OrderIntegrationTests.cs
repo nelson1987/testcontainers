@@ -7,19 +7,19 @@ namespace IntegrationTests;
 public class OrderIntegrationTests : SharedInfrastructure
 {
     private readonly IOrderDomainService _orderDomainService;
-    private readonly IConsumer<CreatedOrderEvent> consumer;
+    private readonly IConsumer<CreatedOrderEvent> _consumer;
 
     public OrderIntegrationTests(SharedTestInfrastructure infrastructure)
         : base(infrastructure)
     {
-        Channel.QueueDeclareAsync(typeof(CreatedOrderEvent).FullName, durable: true, exclusive: false,
+        Channel.QueueDeclareAsync(typeof(CreatedOrderEvent).FullName!, durable: true, exclusive: false,
                 autoDelete: false)
             .GetAwaiter()
             .GetResult();
         _orderDomainService = new OrderDomainService(
             new UnitOfWork(DbContext),
             new Producer<CreatedOrderEvent>(Channel));
-        consumer = new Consumer<CreatedOrderEvent>(Channel);
+        _consumer = new Consumer<CreatedOrderEvent>(Channel);
     }
 
     [Fact]
@@ -46,11 +46,11 @@ public class OrderIntegrationTests : SharedInfrastructure
 
         // Act
         await _orderDomainService.AddOrderAsync(order);
-        await consumer.Consume().WaitAsync(TimeSpan.FromSeconds(5));
+        await _consumer.Consume().WaitAsync(TimeSpan.FromSeconds(5));
 
         // Assert
-        var messageReceived = await consumer.messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        var messageEventReceived = await consumer.messageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var messageReceived = await _consumer.MessageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var messageEventReceived = await _consumer.MessageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var @event = JsonSerializer.Deserialize<DomainEvent<CreatedOrderEvent>>(messageEventReceived);
         Assert.True(messageReceived);
         Assert.Equal(1, @event!.Message.OrderId);
