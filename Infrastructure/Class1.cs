@@ -85,7 +85,6 @@ public class Consumer<T> : IConsumer<T> where T : class
         messageEventReceived = new();
     }
 
-
     public async Task Consume(string queueName)
     {
         var consumerEvent = new AsyncEventingBasicConsumer(Channel);
@@ -106,7 +105,7 @@ public class Consumer<T> : IConsumer<T> where T : class
 
     public async Task Consume()
     {
-        await Consume(typeof(T).FullName);
+        await Consume(typeof(T).FullName!);
     }
 }
 
