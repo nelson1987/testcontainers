@@ -46,7 +46,7 @@ public class OrderIntegrationTests : SharedInfrastructure
 
         // Act
         await _orderDomainService.AddOrderAsync(order);
-        await consumer.Consume().WaitAsync(TimeSpan.FromSeconds(15));
+        await consumer.Consume(typeof(CreatedOrderEvent).FullName).WaitAsync(TimeSpan.FromSeconds(15));
 
         // Assert
         var messageReceived = await consumer.messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(15));

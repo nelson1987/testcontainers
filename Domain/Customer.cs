@@ -85,12 +85,12 @@ public static class CreatedOrderEventExtensions
 public class OrderDomainService : IOrderDomainService
 {
     private readonly IUnitOfWork _unitOfWork;
-    private readonly IProducer<CreatedOrderEvent> _createdOrderproducer;
+    private readonly IProducer<CreatedOrderEvent> _createdOrderProducer;
 
-    public OrderDomainService(IUnitOfWork unitOfWork, IProducer<CreatedOrderEvent> createdOrderproducer)
+    public OrderDomainService(IUnitOfWork unitOfWork, IProducer<CreatedOrderEvent> createdOrderProducer)
     {
         _unitOfWork = unitOfWork;
-        _createdOrderproducer = createdOrderproducer;
+        _createdOrderProducer = createdOrderProducer;
     }
 
     public async Task AddOrderAsync(Order order)
@@ -101,7 +101,7 @@ public class OrderDomainService : IOrderDomainService
             await _unitOfWork.Customers.AddCustomerAsync(order.Customer);
             await _unitOfWork.Orders.AddOrderAsync(order);
             await _unitOfWork.CommitAsync();
-            await _createdOrderproducer.Send(order.ToCreatedEvent());
+            await _createdOrderProducer.Send(order.ToCreatedEvent());
         }
         catch (Exception ex)
         {
