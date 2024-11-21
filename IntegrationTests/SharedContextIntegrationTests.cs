@@ -389,7 +389,7 @@ public class OrderRepository
 public class DomainEvent<T>
     where T : class
 {
-    public string EventType = nameof(T);
+    public string EventType = typeof(T).FullName;
     public string EventId = Guid.NewGuid().ToString("D");
     public DateTime EventDate = DateTime.UtcNow;
 
@@ -511,7 +511,7 @@ public class OrderIntegrationTests : SharedInfrastructure
     public OrderIntegrationTests(SharedTestInfrastructure infrastructure)
         : base(infrastructure)
     {
-        Channel.QueueDeclareAsync(nameof(CreatedOrderEvent), durable: true, exclusive: false, autoDelete: false)
+        Channel.QueueDeclareAsync(typeof(CreatedOrderEvent).FullName, durable: true, exclusive: false, autoDelete: false)
             .GetAwaiter()
             .GetResult();
         _orderDomainService = new OrderDomainService(
@@ -542,7 +542,7 @@ public class OrderIntegrationTests : SharedInfrastructure
 
         // Act
         await _orderDomainService.AddOrderAsync(order);
-        await consumer.Consume(nameof(CreatedOrderEvent)).WaitAsync(TimeSpan.FromSeconds(5));
+        await consumer.Consume(typeof(CreatedOrderEvent).FullName).WaitAsync(TimeSpan.FromSeconds(5));
         
         // Assert
         var messageReceived = await consumer.messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
