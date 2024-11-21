@@ -534,9 +534,10 @@ public class OrderIntegrationTests : SharedInfrastructure
         
         await consumer.Consume(nameof(CreatedOrderEvent)).WaitAsync(TimeSpan.FromSeconds(5));
         var result = await consumer.messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        //var resultEvent = await consumer.messageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var resultEvent = await consumer.messageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var @event =JsonSerializer.Deserialize<CreatedOrderEvent>(resultEvent);
         Assert.True(result);
-        //Assert.Equal(order.Id, resultEvent.OrderId);
+        Assert.Equal(order.Id, @event!.OrderId);
     }
 }
 
@@ -563,12 +564,11 @@ public class BrokerIntegrationTests : SharedInfrastructure
         await producer.Send(QueueName, messageBody);
 
         await consumer.Consume(QueueName).WaitAsync(TimeSpan.FromSeconds(5));
+        
+        // Assert
         var messageReceived = await consumer.messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var messageEventReceived = await consumer.messageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        // Assert
-        //var result = await messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.True(messageReceived);
-        //var resultEvent = await messageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.Equal("{\"EventType\":\"TestEvent\"}", messageEventReceived);
     }
 }
