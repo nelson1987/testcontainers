@@ -44,6 +44,9 @@ public class TestDbContext : DbContext
 // Modelos
 public class Customer
 {
+    protected Customer (){
+    }
+
     public Customer(int id, string name, string email, int age)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(0, id);
@@ -65,6 +68,8 @@ public class Customer
 
 public class Order
 {
+    protected Order (){
+    }
     public Order(int id, DateTime orderDate, decimal total, Customer customer)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(0, id);
