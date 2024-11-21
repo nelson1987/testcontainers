@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "IntegrationTests", "Integra
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Presentation", "Presentation\Presentation.csproj", "{5CC29AA2-AD1E-459D-B785-A51180847EA8}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Domain", "Domain\Domain.csproj", "{8A8CDD90-C21D-42C1-880B-B45D2629DD31}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -24,5 +26,9 @@ Global
 		{5CC29AA2-AD1E-459D-B785-A51180847EA8}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{5CC29AA2-AD1E-459D-B785-A51180847EA8}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{5CC29AA2-AD1E-459D-B785-A51180847EA8}.Release|Any CPU.Build.0 = Release|Any CPU
+		{8A8CDD90-C21D-42C1-880B-B45D2629DD31}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{8A8CDD90-C21D-42C1-880B-B45D2629DD31}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{8A8CDD90-C21D-42C1-880B-B45D2629DD31}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{8A8CDD90-C21D-42C1-880B-B45D2629DD31}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 EndGlobal

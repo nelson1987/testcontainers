@@ -27,6 +27,7 @@
     </ItemGroup>
 
     <ItemGroup>
+      <ProjectReference Include="..\Domain\Domain.csproj" />
       <ProjectReference Include="..\Presentation\Presentation.csproj" />
     </ItemGroup>
 
@@ -43,6 +44,6 @@
     </ItemGroup>
 
     <ItemGroup>
-      <Folder Include="Services\" />
+      <Folder Include="Domain\" />
     </ItemGroup>
 </Project>
