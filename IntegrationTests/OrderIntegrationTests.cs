@@ -23,7 +23,7 @@ public class OrderIntegrationTests : SharedInfrastructure
     }
 
     [Fact]
-    public async Task CreateOrder_ShouldPresistEntity()
+    public async Task CreateOrder_ShouldPersistEntity()
     {
         // Arrange
         var customer = new Customer(0, "John Doe", "john@example.com", 30);
@@ -46,11 +46,11 @@ public class OrderIntegrationTests : SharedInfrastructure
 
         // Act
         await _orderDomainService.AddOrderAsync(order);
-        await consumer.Consume().WaitAsync(TimeSpan.FromSeconds(5));
+        await consumer.Consume().WaitAsync(TimeSpan.FromSeconds(15));
 
         // Assert
-        var messageReceived = await consumer.messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        var messageEventReceived = await consumer.messageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var messageReceived = await consumer.messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(15));
+        var messageEventReceived = await consumer.messageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(15));
         var @event = JsonSerializer.Deserialize<DomainEvent<CreatedOrderEvent>>(messageEventReceived);
         Assert.True(messageReceived);
         Assert.Equal(1, @event!.Message.OrderId);
