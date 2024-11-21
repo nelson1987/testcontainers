@@ -190,38 +190,38 @@ public class OrderUnitTests
     [Fact]
     public void ConstructingOrder_ShouldCreateCorrectly()
     {
-        var order = new Order(0, DateTime.UtcNow, 0.01M,customer);
+        var order = new Order(0, DateTime.UtcNow, 0.01M, customer);
         order.Id.Should().Be(0);
         order.OrderDate.Should().BeCloseTo(DateTime.UtcNow, 1.Seconds());
         order.Total.Should().Be(0.01M);
         order.Customer.Id.Should().Be(customer.Id);
     }
-    
+
     [Fact]
     public void ConstructingCustomer_ShouldHaveIdGreaterThanZero()
     {
-        var order = () => new Order(-1, DateTime.UtcNow, 0.01M,customer);
+        var order = () => new Order(-1, DateTime.UtcNow, 0.01M, customer);
         order.Should().Throw<ArgumentOutOfRangeException>();
     }
-    
+
     [Fact]
     public void ConstructingCustomer_ShouldHaveIdOrderDataGreaterThanNow()
     {
-        var order = () => new Order(0, DateTime.UtcNow.AddSeconds(-5), 0.01M,customer);
+        var order = () => new Order(0, DateTime.UtcNow.AddSeconds(-5), 0.01M, customer);
         order.Should().Throw<ArgumentOutOfRangeException>();
     }
-    
+
     [Fact]
     public void ConstructingCustomer_ShouldHaveIdTotalGreaterThanZero()
     {
-        var order = () => new Order(0, DateTime.UtcNow, -0.01M,customer);
+        var order = () => new Order(0, DateTime.UtcNow, -0.01M, customer);
         order.Should().Throw<ArgumentOutOfRangeException>();
     }
-    
+
     [Fact]
     public void ConstructingCustomer_ShouldHaveRequiredCustomer()
     {
-        var order = () => new Order(0, DateTime.UtcNow, 0.01M,null);
+        var order = () => new Order(0, DateTime.UtcNow, 0.01M, null);
         order.Should().Throw<ArgumentNullException>();
     }
 }
@@ -235,8 +235,8 @@ public class Order
     public Order(int id, DateTime orderDate, decimal total, Customer customer)
     {
         ArgumentOutOfRangeException.ThrowIfLessThan(id, 0);
-        ArgumentOutOfRangeException.ThrowIfLessThan(orderDate,DateTime.UtcNow.AddSeconds(-5));
-        ArgumentOutOfRangeException.ThrowIfLessThan(total,0.01M);
+        ArgumentOutOfRangeException.ThrowIfLessThan(orderDate, DateTime.UtcNow.AddSeconds(-5));
+        ArgumentOutOfRangeException.ThrowIfLessThan(total, 0.01M);
         ArgumentNullException.ThrowIfNull(customer);
         Id = id;
         OrderDate = orderDate;
@@ -410,7 +410,16 @@ public class SharedInfrastructure : IntegrationTestBase, IAsyncDisposable
     }
 }
 
-public class UnitOfWork
+public interface IUnitOfWork
+{
+    Task BeginTransactionAsync();
+    Task CommitAsync();
+    Task RollbackAsync();
+    ICustomerRepository Customers { get; }
+    IOrderRepository Orders { get; }
+}
+
+public class UnitOfWork : IUnitOfWork
 {
     private readonly TestDbContext _context;
     private IDbContextTransaction _dbContextTransaction;
@@ -435,14 +444,20 @@ public class UnitOfWork
         await _dbContextTransaction.RollbackAsync();
     }
 
-    public CustomerRepository Customers
+    public ICustomerRepository Customers
         => new CustomerRepository(_context);
 
-    public OrderRepository Orders
+    public IOrderRepository Orders
         => new OrderRepository(_context);
 }
 
-public class CustomerRepository
+public interface ICustomerRepository
+{
+    Task AddCustomerAsync(Customer customer);
+    Task<Customer?> GetCustomerAsync(Customer customer);
+}
+
+public class CustomerRepository : ICustomerRepository
 {
     private readonly TestDbContext _context;
 
@@ -462,7 +477,13 @@ public class CustomerRepository
         .FirstOrDefaultAsync(c => c.Email == customer.Email);
 }
 
-public class OrderRepository
+public interface IOrderRepository
+{
+    Task AddOrderAsync(Order order);
+    Task<Order?> GetOrderAsync(Order order);
+}
+
+public class OrderRepository : IOrderRepository
 {
     private readonly TestDbContext _context;
 
@@ -507,7 +528,7 @@ public class CustomerIntegrationTests : SharedInfrastructure
 {
     private const string QueueName = "customer_events";
     private readonly CustomerRepository customerRepository;
-    private readonly Producer<CreatedCustomerEvent> producer;
+    private readonly IProducer<CreatedCustomerEvent> producer;
 
     public CustomerIntegrationTests(SharedTestInfrastructure infrastructure)
         : base(infrastructure)
@@ -560,12 +581,17 @@ public class CustomerIntegrationTests : SharedInfrastructure
     }
 }
 
-public class OrderDomainService
+public interface IOrderDomainService
 {
-    private readonly UnitOfWork _unitOfWork;
-    private readonly Producer<CreatedOrderEvent> _createdOrderproducer;
+    
+}
 
-    public OrderDomainService(UnitOfWork unitOfWork, Producer<CreatedOrderEvent> createdOrderproducer)
+public class OrderDomainService : IOrderDomainService
+{
+    private readonly IUnitOfWork _unitOfWork;
+    private readonly IProducer<CreatedOrderEvent> _createdOrderproducer;
+
+    public OrderDomainService(IUnitOfWork unitOfWork, IProducer<CreatedOrderEvent> createdOrderproducer)
     {
         _unitOfWork = unitOfWork;
         _createdOrderproducer = createdOrderproducer;
@@ -601,8 +627,8 @@ public static class CreatedOrderEventExtensions
 public class OrderIntegrationTests : SharedInfrastructure
 {
     private readonly OrderDomainService _orderDomainService;
-    private readonly Producer<CreatedOrderEvent> producer;
-    private readonly Consumer<CreatedOrderEvent> consumer;
+    private readonly IProducer<CreatedOrderEvent> producer;
+    private readonly IConsumer<CreatedOrderEvent> consumer;
 
     public OrderIntegrationTests(SharedTestInfrastructure infrastructure)
         : base(infrastructure)
@@ -684,16 +710,27 @@ public class BrokerIntegrationTests : SharedInfrastructure
     }
 }
 
-public class Consumer<T> where T : class
+public interface IConsumer<T> where T : class
 {
-    public TaskCompletionSource<bool> messageReceived = new();
-    public TaskCompletionSource<string> messageEventReceived = new();
+    TaskCompletionSource<bool> messageReceived { get; }
+    TaskCompletionSource<string> messageEventReceived { get; }
+    Task Consume(string queueName);
+}
+
+public class Consumer<T> : IConsumer<T> where T : class
+{
+    public TaskCompletionSource<bool> messageReceived { get; }
+    public TaskCompletionSource<string> messageEventReceived { get; }
+
     private readonly IChannel Channel;
 
     public Consumer(IChannel channel)
     {
         Channel = channel;
+        messageReceived = new();
+        messageEventReceived = new();
     }
+
 
     public async Task Consume(string queueName)
     {
@@ -715,7 +752,12 @@ public class Consumer<T> where T : class
     }
 }
 
-public class Producer<T> where T : class
+public interface IProducer<T> where T : class
+{
+    Task Send(DomainEvent<T> message);
+}
+
+public class Producer<T> : IProducer<T> where T : class
 {
     private readonly IChannel Channel;
 
