@@ -41,4 +41,8 @@
       <Compile Remove="HttpClientIntegrationTests.cs" />
       <Compile Remove="RabbitMqIntegrationTests.cs" />
     </ItemGroup>
+
+    <ItemGroup>
+      <Folder Include="Services\" />
+    </ItemGroup>
 </Project>

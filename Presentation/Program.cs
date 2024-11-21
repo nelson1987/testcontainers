@@ -36,6 +36,7 @@ if (app.Environment.IsDevelopment())
     app.UseSwaggerUI();
 }
 app.UseSerilogRequestLogging();
+app.UseRequestContextLogging();
 app.UseHttpsRedirection();
 app.UseAuthorization();
 app.MapControllers();
