@@ -19,9 +19,6 @@ public class TestDbContext : DbContext
     {
     }
 
-    public DbSet<Customer> Customers { get; set; }
-    public DbSet<Order> Orders { get; set; }
-
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
         modelBuilder.Entity<Customer>(entity =>
@@ -43,34 +40,64 @@ public class TestDbContext : DbContext
         });
     }
 }
+
 // Modelos
 public class Customer
 {
-    public int Id { get; set; }
-    public string Name { get; set; }
-    public string Email { get; set; }
-    public int Age { get; set; }
+    public Customer(int id, string name, string email, int age)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(0, id);
+        ArgumentException.ThrowIfNullOrWhiteSpace(name);
+        ArgumentException.ThrowIfNullOrWhiteSpace(email);
+        ArgumentOutOfRangeException.ThrowIfLessThan(18, age);
+        Id = id;
+        Name = name;
+        Email = email;
+        Age = age;
+    }
+
+    public int Id { get; private set; }
+    public string Name { get; private set; }
+    public string Email { get; private set; }
+    public int Age { get; private set; }
     public List<Order> Orders { get; set; } = new();
 }
 
 public class Order
 {
-    public int Id { get; set; }
-    public DateTime OrderDate { get; set; }
-    public decimal Total { get; set; }
-    public int CustomerId { get; set; }
-    public Customer Customer { get; set; }
+    public Order(int id, DateTime orderDate, decimal total, Customer customer)
+    {
+        ArgumentOutOfRangeException.ThrowIfLessThan(0, id);
+        ArgumentOutOfRangeException.ThrowIfLessThan(DateTime.Today, orderDate);
+        ArgumentOutOfRangeException.ThrowIfLessThan(0.01M, total);
+        Id = id;
+        OrderDate = orderDate;
+        Total = total;
+        //CustomerId = customerId;
+        Customer = customer;
+    }
+
+    public int Id { get; private set; }
+    public DateTime OrderDate { get; private set; }
+    public decimal Total { get; private set; }
+    public int CustomerId { get; private set; }
+    public Customer Customer { get; private set; }
 }
+
 // Classe que encapsula toda a infraestrutura compartilhada
 public class SharedTestInfrastructure : IAsyncLifetime
 {
     private readonly MsSqlContainer _sqlContainer;
+
     private readonly RabbitMqContainer _rabbitContainer;
+
     // private readonly IServiceProvider _serviceProvider;
     // private readonly HttpClient _httpClient;
     private readonly IntegrationTestWebAppFactory _factory;
     public string SqlConnectionString { get; private set; }
+
     public IConnection RabbitConnection { get; private set; }
+
     //public IHttpClientFactory HttpClientFactory { get; private set; }
     public HttpClient Client { get; private set; }
 
@@ -147,7 +174,9 @@ public class SharedInfrastructureCollection : ICollectionFixture<SharedTestInfra
 public abstract class IntegrationTestBase
 {
     protected readonly TestDbContext DbContext;
+
     protected readonly IConnection RabbitConnection;
+
     //protected readonly IHttpClientFactory HttpClientFactory;
     protected readonly SharedTestInfrastructure Infrastructure;
     protected readonly HttpClient Client;
@@ -155,12 +184,12 @@ public abstract class IntegrationTestBase
     protected IntegrationTestBase(SharedTestInfrastructure infrastructure)
     {
         Infrastructure = infrastructure;
-        
+
         var options = new DbContextOptionsBuilder<TestDbContext>()
             .UseSqlServer(infrastructure.SqlConnectionString)
             .LogTo(Console.WriteLine, LogLevel.Information)
             .Options;
-            
+
         DbContext = new TestDbContext(options);
         RabbitConnection = infrastructure.RabbitConnection;
         //HttpClientFactory = infrastructure.HttpClientFactory;
@@ -180,7 +209,7 @@ public class CustomerIntegrationTests : IntegrationTestBase, IAsyncLifetime
     {
         _channel = RabbitConnection.CreateChannelAsync().GetAwaiter().GetResult();
     }
-    
+
     public async Task InitializeAsync()
     {
         // Configuração específica para testes de Order
@@ -197,21 +226,17 @@ public class CustomerIntegrationTests : IntegrationTestBase, IAsyncLifetime
     public async Task CreateCustomer_ShouldPublishEvent()
     {
         // Arrange
-        var customer = new Customer
-        {
-            Name = "John Doe",
-            Email = "john@example.com",
-            Age = 30
-        };
+        var customer = new Customer(0, "John Doe", "john@example.com", 30);
 
         // Act
-        DbContext.Customers.Add(customer);
+        DbContext.Set<Customer>().Add(customer);
         await DbContext.SaveChangesAsync();
 
         // Publicar evento no RabbitMQ
-        var message = JsonSerializer.Serialize(new { 
-            EventType = "CustomerCreated", 
-            CustomerId = customer.Id 
+        var message = JsonSerializer.Serialize(new
+        {
+            EventType = "CustomerCreated",
+            CustomerId = customer.Id
         });
         var body = Encoding.UTF8.GetBytes(message);
         var properties = new BasicProperties
@@ -225,8 +250,8 @@ public class CustomerIntegrationTests : IntegrationTestBase, IAsyncLifetime
             body: body);
 
         // Assert
-        var savedCustomer = await DbContext.Customers
-            .FirstOrDefaultAsync(c => c.Email == "john@example.com");
+        var savedCustomer = await DbContext.Set<Customer>()
+            .FirstOrDefaultAsync(c => c.Email == customer.Email);
         Assert.NotNull(savedCustomer);
     }
 
@@ -243,7 +268,7 @@ public class CustomerIntegrationTests : IntegrationTestBase, IAsyncLifetime
         // Assert.True(response.IsSuccessStatusCode);
         throw new NotImplementedException();
     }
-    
+
     [Fact]
     public async Task GetCustomerDetails_ShouldCallInternalApi()
     {
@@ -284,30 +309,22 @@ public class OrderIntegrationTests : IntegrationTestBase, IAsyncLifetime
     public async Task CreateOrder_ShouldPublishEvent()
     {
         // Arrange
-        var customer = new Customer
-        {
-            Name = "Test Customer",
-            Email = "test@example.com",
-            Age = 30
-        };
-        DbContext.Customers.Add(customer);
+        var customer = new Customer(0, "John Doe", "john@example.com", 30);
+
+        DbContext.Set<Customer>().Add(customer);
         await DbContext.SaveChangesAsync();
 
-        var order = new Order
-        {
-            CustomerId = customer.Id,
-            OrderDate = DateTime.UtcNow,
-            Total = 100.50m
-        };
-
+        var order = new Order(0, DateTime.UtcNow, 100.50m, customer);
+        
         // Act
-        DbContext.Orders.Add(order);
+        DbContext.Set<Order>().Add(order);
         await DbContext.SaveChangesAsync();
 
         // Publicar evento no RabbitMQ
-        var message = JsonSerializer.Serialize(new { 
-            EventType = "OrderCreated", 
-            OrderId = order.Id 
+        var message = JsonSerializer.Serialize(new
+        {
+            EventType = "OrderCreated",
+            OrderId = order.Id
         });
         var body = Encoding.UTF8.GetBytes(message);
         var properties = new BasicProperties
@@ -321,7 +338,7 @@ public class OrderIntegrationTests : IntegrationTestBase, IAsyncLifetime
             body: body);
 
         // Assert
-        var savedOrder = await DbContext.Orders
+        var savedOrder = await DbContext.Set<Order>()
             .Include(o => o.Customer)
             .FirstOrDefaultAsync(o => o.Id == order.Id);
         Assert.NotNull(savedOrder);
@@ -335,7 +352,7 @@ public class OrderIntegrationTests : IntegrationTestBase, IAsyncLifetime
         var messageEventReceived = new TaskCompletionSource<string>();
         var consumer = new AsyncEventingBasicConsumer(_channel);
 
-        consumer.ReceivedAsync += async(model, ea) =>
+        consumer.ReceivedAsync += async (model, ea) =>
         {
             var body = ea.Body.ToArray();
             var message = Encoding.UTF8.GetString(body);
