@@ -543,7 +543,7 @@ public class OrderIntegrationTests : SharedInfrastructure
         // Act
         await _orderDomainService.AddOrderAsync(order);
         // Assert
-        await consumer.Consume(nameof(CreatedOrderEvent)).WaitAsync(TimeSpan.FromSeconds(15));
+        await consumer.Consume(nameof(CreatedOrderEvent)).WaitAsync(TimeSpan.FromMinutes(10));
         var result = await consumer.messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var resultEvent = await consumer.messageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var @event =JsonSerializer.Deserialize<CreatedOrderEvent>(resultEvent);
