@@ -506,19 +506,22 @@ public class OrderIntegrationTests : SharedInfrastructure
     private const string QueueName = "order_events";
     private readonly OrderDomainService _orderDomainService;
     private readonly Producer<CreatedOrderEvent> producer;
+    private readonly Consumer<CreatedOrderEvent> consumer;
 
     public OrderIntegrationTests(SharedTestInfrastructure infrastructure)
         : base(infrastructure)
     {
-        Channel.QueueDeclareAsync(nameof(CreatedOrderEvent), durable: true, exclusive: false, autoDelete: false).GetAwaiter()
+        Channel.QueueDeclareAsync(nameof(CreatedOrderEvent), durable: true, exclusive: false, autoDelete: false)
+            .GetAwaiter()
             .GetResult();
         _orderDomainService = new OrderDomainService(
             new UnitOfWork(DbContext),
             new Producer<CreatedOrderEvent>(Channel));
+        consumer = new Consumer<CreatedOrderEvent>(Channel);
     }
 
     [Fact]
-    public async Task CreateOrder_ShouldPublishEvent()
+    public async Task CreateOrder_ShouldPresistEntity()
     {
         // Arrange
         var customer = new Customer(0, "John Doe", "john@example.com", 30);
@@ -529,10 +532,18 @@ public class OrderIntegrationTests : SharedInfrastructure
         // Assert
         var savedOrder = await _orderDomainService.FindOrderAsync(order);
         Assert.NotNull(savedOrder);
-        
-        var consumer = new Consumer<CreatedOrderEvent>(Channel);
-        
-        await consumer.Consume(nameof(CreatedOrderEvent)).WaitAsync(TimeSpan.FromSeconds(5));
+    }
+    [Fact]
+    public async Task CreateOrder_ShouldPublishEvent()
+    {
+        // Arrange
+        var customer = new Customer(0, "John Doe", "john@example.com", 30);
+        var order = new Order(0, DateTime.UtcNow, 100.50m, customer);
+
+        // Act
+        await _orderDomainService.AddOrderAsync(order);
+        // Assert
+        await consumer.Consume(nameof(CreatedOrderEvent)).WaitAsync(TimeSpan.FromSeconds(15));
         var result = await consumer.messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var resultEvent = await consumer.messageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var @event =JsonSerializer.Deserialize<CreatedOrderEvent>(resultEvent);
