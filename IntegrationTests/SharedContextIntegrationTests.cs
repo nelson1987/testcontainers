@@ -510,7 +510,7 @@ public class OrderIntegrationTests : SharedInfrastructure
     public OrderIntegrationTests(SharedTestInfrastructure infrastructure)
         : base(infrastructure)
     {
-        Channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false).GetAwaiter()
+        Channel.QueueDeclareAsync(nameof(CreatedOrderEvent), durable: true, exclusive: false, autoDelete: false).GetAwaiter()
             .GetResult();
         _orderDomainService = new OrderDomainService(
             new UnitOfWork(DbContext),
