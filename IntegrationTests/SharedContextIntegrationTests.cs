@@ -529,6 +529,13 @@ public class OrderIntegrationTests : SharedInfrastructure
         // Assert
         var savedOrder = await _orderDomainService.FindOrderAsync(order);
         Assert.NotNull(savedOrder);
+        
+        var consumer = new Consumer<CreatedOrderEvent>(Channel);
+        await consumer.Consume(QueueName).WaitAsync(TimeSpan.FromSeconds(5));
+        var result = await consumer.messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var resultEvent = await consumer.messageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        Assert.True(result);
+        Assert.Equal(order.Id, resultEvent.OrderId);
     }
 }
 
@@ -561,14 +568,14 @@ public class BrokerIntegrationTests : SharedInfrastructure
         var result = await messageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         Assert.True(result);
         var resultEvent = await messageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        Assert.Equal("TestEvent", resultEvent);
+        Assert.Equal("\"{\"EventType\":\"TestEvent\"}\"", resultEvent);
     }
 }
 
 public class Consumer<T> where T : class
 {
     public TaskCompletionSource<bool> messageReceived = new();
-    public TaskCompletionSource<string> messageEventReceived = new();
+    public TaskCompletionSource<T> messageEventReceived = new();
     private readonly IChannel Channel;
 
     public Consumer(IChannel channel)
@@ -584,7 +591,7 @@ public class Consumer<T> where T : class
             var body = ea.Body.ToArray();
             var message = Encoding.UTF8.GetString(body);
             messageReceived.SetResult(true);
-            messageEventReceived.SetResult(message);
+            messageEventReceived.SetResult(JsonSerializer.Deserialize<T>(message));
             await Channel.BasicAckAsync(ea.DeliveryTag, false);
         };
 
