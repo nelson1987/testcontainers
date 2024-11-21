@@ -11,7 +11,8 @@ public class BrokerIntegrationTests : SharedInfrastructure
     public BrokerIntegrationTests(SharedTestInfrastructure infrastructure)
         : base(infrastructure)
     {
-        Channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false).GetAwaiter()
+        Channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false)
+            .GetAwaiter()
             .GetResult();
     }
 

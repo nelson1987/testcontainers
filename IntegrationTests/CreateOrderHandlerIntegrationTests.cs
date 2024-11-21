@@ -13,6 +13,10 @@ public class CreateOrderHandlerIntegrationTests : SharedInfrastructure
     public CreateOrderHandlerIntegrationTests(SharedTestInfrastructure infrastructure)
         : base(infrastructure)
     {
+        Channel.QueueDeclareAsync(typeof(CreatedOrderEvent).FullName, durable: true, exclusive: false,
+                autoDelete: false)
+            .GetAwaiter()
+            .GetResult();
         _handler = new CreateOrderHandler(new OrderDomainService(
                 new UnitOfWork(DbContext),
                 new Producer<CreatedOrderEvent>(Channel)
