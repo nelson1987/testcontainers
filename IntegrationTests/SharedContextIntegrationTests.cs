@@ -410,6 +410,7 @@ public class CustomerIntegrationTests : SharedInfrastructure
 {
     private const string QueueName = "customer_events";
     private readonly CustomerRepository customerRepository;
+    private readonly Producer<CreatedCustomerEvent>  producer;
 
     public CustomerIntegrationTests(SharedTestInfrastructure infrastructure)
         : base(infrastructure)
@@ -417,6 +418,7 @@ public class CustomerIntegrationTests : SharedInfrastructure
         Channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false).GetAwaiter()
             .GetResult();
         customerRepository = new CustomerRepository(DbContext);
+        producer = new Producer<CreatedCustomerEvent>(Channel);
     }
 
     [Fact]
@@ -429,9 +431,7 @@ public class CustomerIntegrationTests : SharedInfrastructure
         await customerRepository.AddCustomerAsync(customer);
 
         // Publicar evento no RabbitMQ
-        var producer = new Producer<CreatedCustomerEvent>(Channel);
         var @event = new DomainEvent<CreatedCustomerEvent>(new CreatedCustomerEvent(customer.Id));
-
         await producer.Send(@event);
 
         // Assert
@@ -496,6 +496,7 @@ public class OrderIntegrationTests : SharedInfrastructure
 {
     private const string QueueName = "order_events";
     private readonly OrderDomainService _orderDomainService;
+    private readonly Producer<CreatedOrderEvent>  producer;
 
     public OrderIntegrationTests(SharedTestInfrastructure infrastructure)
         : base(infrastructure)
@@ -503,6 +504,7 @@ public class OrderIntegrationTests : SharedInfrastructure
         Channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false).GetAwaiter()
             .GetResult();
         _orderDomainService = new OrderDomainService(new UnitOfWork(DbContext));
+        producer = new Producer<CreatedOrderEvent>(Channel);
     }
 
     [Fact]
@@ -516,7 +518,6 @@ public class OrderIntegrationTests : SharedInfrastructure
         await _orderDomainService.AddOrderAsync(order);
 
         // Publicar evento no RabbitMQ
-        var producer = new Producer<CreatedOrderEvent>(Channel);
         var @event = new DomainEvent<CreatedOrderEvent>(new CreatedOrderEvent(order.Id));
 
         await producer.Send(@event);
