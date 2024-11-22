@@ -16,7 +16,9 @@ public class SharedInfrastructure : IntegrationTestBase, IAsyncDisposable
         Channel = RabbitConnection.CreateChannelAsync()
             .GetAwaiter()
             .GetResult();
-        Channel.QueueDeclareAsync(typeof(CreatedOrderEvent).FullName!, durable: true, exclusive: false,
+        Channel.QueueDeclareAsync(typeof(CreatedOrderEvent).FullName!, 
+                durable: true, 
+                exclusive: false,
                 autoDelete: false)
             .GetAwaiter()
             .GetResult();
@@ -26,6 +28,6 @@ public class SharedInfrastructure : IntegrationTestBase, IAsyncDisposable
     public async ValueTask DisposeAsync()
     {
         await Channel.DisposeAsync();
-        await Channel.QueueDeleteAsync(typeof(CreatedOrderEvent).FullName!);
+        await Channel.QueuePurgeAsync(typeof(CreatedOrderEvent).FullName!);
     }
 }

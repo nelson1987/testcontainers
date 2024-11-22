@@ -14,7 +14,7 @@ public class OrderIntegrationTests : SharedInfrastructure
         : base(infrastructure)
     {
         Channel.QueueDeclareAsync(typeof(CreatedOrderEvent).FullName!, durable: true, exclusive: false,
-                autoDelete: false)
+                autoDelete: false, arguments: null)
             .GetAwaiter()
             .GetResult();
         _orderDomainService = new OrderDomainService(

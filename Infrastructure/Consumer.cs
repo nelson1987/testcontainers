@@ -28,12 +28,13 @@ public class Consumer<T> : IConsumer<T> where T : class
             var message = Encoding.UTF8.GetString(body);
             MessageReceived.SetResult(true);
             MessageEventReceived.SetResult(message);
-            await _channel.BasicAckAsync(ea.DeliveryTag, false);
+            //await _channel.BasicAckAsync(ea.DeliveryTag, false);
+            await Task.CompletedTask;
         };
 
         // Act
         await _channel.BasicConsumeAsync(queue: queueName,
-            autoAck: false,
+            true, //autoAck: false,
             consumer: consumerEvent);
     }
 
