@@ -19,7 +19,7 @@ public abstract class IntegrationTestBase
 
         var options = new DbContextOptionsBuilder<TestDbContext>()
             .UseSqlServer(infrastructure.SqlConnectionString)
-            //.LogTo(Console.WriteLine, LogLevel.Information)
+            .LogTo(Console.WriteLine, LogLevel.Information)
             .Options;
 
         DbContext = new TestDbContext(options);

@@ -10,7 +10,8 @@ public static class Dependencies
     {
         services
             .AddScoped<IValidator<CreateOrderCommand>, CreateOrderValidator>()
-            .AddScoped<ICreateOrderHandler, CreateOrderHandler>();
+            .AddScoped<ICreateOrderHandler, CreateOrderHandler>()
+            .AddScoped<IOrderDomainService, OrderDomainService>();
         return services;
     }
 }
@@ -42,7 +43,7 @@ public interface ICreateOrderHandler
     Task Handle(CreateOrderCommand command, CancellationToken cancellationToken);
 }
 
-public class CreateOrderHandler: ICreateOrderHandler
+public class CreateOrderHandler : ICreateOrderHandler
 {
     private readonly IOrderDomainService _orderDomainService;
     private readonly IValidator<CreateOrderCommand> _validator;

@@ -1,4 +1,6 @@
 using System.Data.SqlClient;
+using Application;
+using Infrastructure;
 using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
@@ -51,6 +53,8 @@ public class IntegrationTestWebAppFactory
             // dbContext.Database.EnsureCreated();
             // dbContext.Database.Migrate();
             // services.AddScoped<IUnitOfWork, UnitOfWork>(x=> new UnitOfWork(dbContext));
+            services.AddApplication()
+                .AddInfrastructure();
         });
     }
 }
