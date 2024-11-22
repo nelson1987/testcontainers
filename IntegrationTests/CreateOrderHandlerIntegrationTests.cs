@@ -1,6 +1,7 @@
 using System.Text.Json;
 using Application;
 using Domain;
+using FluentAssertions;
 using Infrastructure;
 
 namespace IntegrationTests;
@@ -42,7 +43,7 @@ public class CreateOrderHandlerIntegrationTests : SharedInfrastructure
         var messageReceived = await _consumer.MessageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var messageEventReceived = await _consumer.MessageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var @event = JsonSerializer.Deserialize<DomainEvent<CreatedOrderEvent>>(messageEventReceived);
-        Assert.True(messageReceived);
-        Assert.Equal(1, @event!.Message.OrderId);
+        messageReceived.Should().BeTrue();
+        @event!.Message.OrderId.Should().Be(1);
     }
 }

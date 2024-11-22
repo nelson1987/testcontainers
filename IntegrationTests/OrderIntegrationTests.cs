@@ -1,5 +1,6 @@
 using System.Text.Json;
 using Domain;
+using FluentAssertions;
 using Infrastructure;
 
 namespace IntegrationTests;
@@ -34,7 +35,7 @@ public class OrderIntegrationTests : SharedInfrastructure
 
         // Assert
         var savedOrder = await _orderDomainService.FindOrderAsync(order);
-        Assert.NotNull(savedOrder);
+        savedOrder.Should().NotBeNull();
     }
 
     [Fact(Skip = "System.TimeoutException : The operation has timed out.")]
@@ -52,7 +53,7 @@ public class OrderIntegrationTests : SharedInfrastructure
         var messageReceived = await _consumer.MessageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var messageEventReceived = await _consumer.MessageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var @event = JsonSerializer.Deserialize<DomainEvent<CreatedOrderEvent>>(messageEventReceived);
-        Assert.True(messageReceived);
-        Assert.Equal(1, @event!.Message.OrderId);
+        messageReceived.Should().BeTrue();
+        @event!.Message.OrderId.Should().Be(1);
     }
 }

@@ -43,7 +43,7 @@ public class CustomerIntegrationTests : SharedInfrastructure
 
         // Assert
         var savedCustomer = await _customerRepository.GetCustomerAsync(customer);
-        Assert.NotNull(savedCustomer);
+        savedCustomer.Should().NotBeNull();
     }
 
     [Fact(Skip = "Integration tests fails on CI")]
@@ -72,8 +72,8 @@ public class CustomerIntegrationTests : SharedInfrastructure
         var messageReceived = await _consumer.MessageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var messageEventReceived = await _consumer.MessageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var @event = JsonSerializer.Deserialize<DomainEvent<CreatedOrderEvent>>(messageEventReceived);
-        Assert.True(messageReceived);
-        Assert.Equal(1, @event!.Message.OrderId);
+        messageReceived.Should().BeTrue();
+        @event!.Message.OrderId.Should().Be(1);
     }
     // [Fact]
     // public async Task GetCustomerDetails_ShouldCallInternalApi_Result()

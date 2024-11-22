@@ -1,5 +1,6 @@
 using System.Text;
 using System.Text.Json;
+using FluentAssertions;
 using Infrastructure;
 
 namespace IntegrationTests;
@@ -32,7 +33,7 @@ public class BrokerIntegrationTests : SharedInfrastructure
         // Assert
         var messageReceived = await consumer.MessageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
         var messageEventReceived = await consumer.MessageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        Assert.True(messageReceived);
-        Assert.Equal("{\"EventType\":\"TestEvent\"}", messageEventReceived);
+        messageReceived.Should().BeTrue();
+        messageEventReceived.Should().Be("{\"EventType\":\"TestEvent\"}");
     }
 }
