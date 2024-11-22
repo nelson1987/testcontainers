@@ -5,6 +5,7 @@ using Microsoft.AspNetCore.Hosting;
 using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
+using Microsoft.EntityFrameworkCore.Diagnostics;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 using Presentation;
@@ -28,6 +29,7 @@ public class IntegrationTestWebAppFactory
     {
         _options = new DbContextOptionsBuilder<TestDbContext>()
             .UseSqlServer(SqlConnectionString)
+            .ConfigureWarnings(w => w.Throw(RelationalEventId.MultipleCollectionIncludeWarning))
             .Options;
     }
 
@@ -47,6 +49,7 @@ public class IntegrationTestWebAppFactory
             testDbContext.Database.EnsureCreatedAsync().GetAwaiter().GetResult();
             testDbContext.Database.MigrateAsync().GetAwaiter().GetResult();
             
+            services.AddSingleton<TestDbContext>(_ => testDbContext);
             //var connectionString = Guid.NewGuid().ToString("D");
             //services.AddDbContext<TestDbContext>(_ => _.UseSqlServer(SqlConnectionString));
         });
