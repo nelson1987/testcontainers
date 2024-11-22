@@ -1,3 +1,4 @@
+using System.Text.Json;
 using Domain;
 using FluentAssertions;
 using Infrastructure;
@@ -10,14 +11,21 @@ public class CustomerIntegrationTests : SharedInfrastructure
     private const string QueueName = "customer_events";
     private readonly ICustomerRepository _customerRepository;
     private readonly IProducer<CreatedCustomerEvent> _producer;
+    private readonly IConsumer<CreatedOrderEvent> _consumer;
 
     public CustomerIntegrationTests(SharedTestInfrastructure infrastructure)
         : base(infrastructure)
     {
-        Channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false).GetAwaiter()
+        Channel.QueueDeclareAsync(QueueName, durable: true, exclusive: false, autoDelete: false)
+            .GetAwaiter()
+            .GetResult();
+        Channel.QueueDeclareAsync(typeof(CreatedOrderEvent).FullName!, durable: true, exclusive: false,
+                autoDelete: false)
+            .GetAwaiter()
             .GetResult();
         _customerRepository = new CustomerRepository(DbContext);
         _producer = new Producer<CreatedCustomerEvent>(Channel);
+        _consumer = new Consumer<CreatedOrderEvent>(Channel);
     }
 
     [Fact]
@@ -60,6 +68,12 @@ public class CustomerIntegrationTests : SharedInfrastructure
         // Assert
         response.Should().BeSuccessful();
         
+        await _consumer.Consume().WaitAsync(TimeSpan.FromSeconds(5));
+        var messageReceived = await _consumer.MessageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var messageEventReceived = await _consumer.MessageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
+        var @event = JsonSerializer.Deserialize<DomainEvent<CreatedOrderEvent>>(messageEventReceived);
+        Assert.True(messageReceived);
+        Assert.Equal(1, @event!.Message.OrderId);
     }
     // [Fact]
     // public async Task GetCustomerDetails_ShouldCallInternalApi_Result()
