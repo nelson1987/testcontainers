@@ -1,4 +1,6 @@
+using System.Text;
 using System.Text.Json;
+using Application;
 using Domain;
 using FluentAssertions;
 using Infrastructure;
@@ -63,8 +65,12 @@ public class CustomerIntegrationTests : SharedInfrastructure
     [Fact(Skip = "Integration tests fails on CI")]
     public async Task GetCustomerDetails_ShouldCallInternalApi()
     {
+        // Assert
+        var command = new CreateOrderCommand("John Doe", "johndoe@email.com",18,100.00M);
+        var serializeCommand = JsonSerializer.Serialize(command);
+        var content = new StringContent(serializeCommand, Encoding.UTF8, "application/json");
         // Act
-        var response = await Client.GetAsync(Constantes.GET_URI_PATH);
+        var response = await Client.PostAsync(Constantes.GET_URI_PATH, content);
         // Assert
         response.Should().BeSuccessful();
         
