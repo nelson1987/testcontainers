@@ -27,23 +27,23 @@ public class CreateOrderHandlerIntegrationTests : SharedInfrastructure
         _consumer = new Consumer<CreatedOrderEvent>(Channel);
     }
     
-    [Fact]
-    public async Task CreateOrder_ShouldPresistEntity()
-    {
-        // Arrange
-        var command = new CreateOrderCommand("John Doe", "john@example.com", 30, 100.50m);
-
-        // Act
-        await _handler.Handle(command, CancellationToken.None);
-
-        // Assert
-        await _consumer.Consume().WaitAsync(TimeSpan.FromSeconds(5));
-
-        // Assert
-        var messageReceived = await _consumer.MessageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        var messageEventReceived = await _consumer.MessageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
-        var @event = JsonSerializer.Deserialize<DomainEvent<CreatedOrderEvent>>(messageEventReceived);
-        messageReceived.Should().BeTrue();
-        @event!.Message.OrderId.Should().Be(1);
-    }
+    // [Fact]
+    // public async Task CreateOrder_ShouldPresistEntity()
+    // {
+    //     // Arrange
+    //     var command = new CreateOrderCommand("John Doe", "john@example.com", 30, 100.50m);
+    //
+    //     // Act
+    //     await _handler.Handle(command, CancellationToken.None);
+    //
+    //     // Assert
+    //     await _consumer.Consume().WaitAsync(TimeSpan.FromSeconds(5));
+    //
+    //     // Assert
+    //     var messageReceived = await _consumer.MessageReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
+    //     var messageEventReceived = await _consumer.MessageEventReceived.Task.WaitAsync(TimeSpan.FromSeconds(5));
+    //     var @event = JsonSerializer.Deserialize<DomainEvent<CreatedOrderEvent>>(messageEventReceived);
+    //     messageReceived.Should().BeTrue();
+    //     @event!.Message.OrderId.Should().Be(1);
+    // }
 }

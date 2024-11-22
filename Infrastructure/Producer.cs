@@ -23,14 +23,14 @@ public class Producer<T> : IProducer<T> where T : class
 
     public async Task Send(string queueName, byte[] message)
     {
-        // var properties = new BasicProperties
-        // {
-        //     Persistent = true
-        // };
+        var properties = new BasicProperties
+        {
+            Persistent = true
+        };
         await _channel.BasicPublishAsync(exchange: string.Empty,
             routingKey: queueName,
-            // mandatory: true,
-            // basicProperties: properties,
+            mandatory: true,
+            basicProperties: properties,
             body: message);
     }
 }
