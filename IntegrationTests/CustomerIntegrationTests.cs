@@ -62,6 +62,19 @@ public class CustomerIntegrationTests : SharedInfrastructure
         throw new NotImplementedException();
     }
 
+    [Fact]
+    public async Task GetCustomerDetails_ShouldCallInternalApi_ReturnSucess()
+    {
+        // Assert
+        var command = new CreateOrderCommand("John Doe", "johndoe@email.com",18,100.00M);
+        var serializeCommand = JsonSerializer.Serialize(command);
+        var content = new StringContent(serializeCommand, Encoding.UTF8, "application/json");
+        // Act
+        var response = await Client.PostAsync(Constantes.GET_URI_PATH, content);
+        // Assert
+        response.Should().BeSuccessful();
+    }
+    
     [Fact(Skip = "Integration tests fails on CI")]
     public async Task GetCustomerDetails_ShouldCallInternalApi()
     {
