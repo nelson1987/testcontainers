@@ -56,7 +56,9 @@ public class SharedTestInfrastructure : IAsyncLifetime
         );
 
         SqlConnectionString = _sqlContainer.GetConnectionString();
-
+        var connectionString = new SqlConnectionStringBuilder("");
+        connectionString.InitialCatalog = Guid.NewGuid().ToString("D");
+        
         // Configura a conexão do RabbitMQ
         var connectionFactory = new ConnectionFactory();
         connectionFactory.Uri = new Uri(_rabbitContainer.GetConnectionString());
@@ -64,7 +66,7 @@ public class SharedTestInfrastructure : IAsyncLifetime
 
         // Inicializa o banco de dados
         var options = new DbContextOptionsBuilder<TestDbContext>()
-            .UseSqlServer(SqlConnectionString)
+            .UseSqlServer(connectionString.ToString())
             .Options;
 
         await using var context = new TestDbContext(options);
