@@ -9,6 +9,7 @@ namespace Presentation.Controllers;
 [Route("api/v1/[controller]")]
 public class ContratosController : ControllerBase
 {
+    /*
     private static readonly string[] Summaries = new[]
     {
         "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
@@ -26,20 +27,20 @@ public class ContratosController : ControllerBase
         _createUserProducer = createUserProducer;
         _userRepository = userRepository;
     }
-
+*/
     [HttpGet]
-    public async Task<IEnumerable<WeatherForecast>> Get()
+    public async Task<IActionResult> Get()
     {
-        await _createUserProducer.SendMessage(new CreatedUserEvent(5, "John Doe", 18, true));
-        await _userRepository.CreateUserAsync(new User(0, "John Doe", 18, true));
-        return Enumerable.Range(1, 5).Select(index => new WeatherForecast
-            {
-                Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-                TemperatureC = Random.Shared.Next(-20, 55),
-                Summary = Summaries[Random.Shared.Next(Summaries.Length)]
-            })
-            .ToArray();
-        
+        // await _createUserProducer.SendMessage(new CreatedUserEvent(5, "John Doe", 18, true));
+        // await _userRepository.CreateUserAsync(new User(0, "John Doe", 18, true));
+        // return Enumerable.Range(1, 5).Select(index => new WeatherForecast
+        //     {
+        //         Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
+        //         TemperatureC = Random.Shared.Next(-20, 55),
+        //         Summary = Summaries[Random.Shared.Next(Summaries.Length)]
+        //     })
+        //     .ToArray();
+        return Ok("Hello World!");
     }
 }
 

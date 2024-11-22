@@ -52,7 +52,7 @@ public class CustomerIntegrationTests : SharedInfrastructure
         throw new NotImplementedException();
     }
 
-    [Fact(Skip = "Integration tests fails on CI")]
+    [Fact]
     public async Task GetCustomerDetails_ShouldCallInternalApi()
     {
         // Act
