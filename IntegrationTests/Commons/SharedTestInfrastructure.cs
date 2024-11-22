@@ -61,18 +61,10 @@ public class SharedTestInfrastructure : IAsyncLifetime
         var connectionFactory = new ConnectionFactory();
         connectionFactory.Uri = new Uri(_rabbitContainer.GetConnectionString());
         RabbitConnection = await connectionFactory.CreateConnectionAsync();
-
-        // Inicializa o banco de dados
-        var options = new DbContextOptionsBuilder<TestDbContext>()
-            .UseSqlServer(SqlConnectionString)
-            .Options;
-
-        await using var context = new TestDbContext(options);
-        await context.Database.EnsureCreatedAsync();
-        await context.Database.MigrateAsync();
-        
+      
         var factory = new IntegrationTestWebAppFactory();
         factory.SetChannel(RabbitConnection);
+        factory.SetDbContextOptions(SqlConnectionString);
         Client = factory.CreateDefaultClient();
     }
 

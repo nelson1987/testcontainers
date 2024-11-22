@@ -16,11 +16,19 @@ namespace IntegrationTests;
 public class IntegrationTestWebAppFactory
     : WebApplicationFactory<Program>, IDisposable
 {
-    public IChannel channel { get; private set; }
+    public IChannel _channel { get; private set; }
+    public DbContextOptions<TestDbContext> _options { get; private set; }
 
-    public IChannel SetChannel(IConnection rabbitConnection)
+    public void SetChannel(IConnection rabbitConnection)
     {
-        return rabbitConnection.CreateChannelAsync().GetAwaiter().GetResult();
+        _channel = rabbitConnection.CreateChannelAsync().GetAwaiter().GetResult();
+    }
+
+    public void SetDbContextOptions(string SqlConnectionString)
+    {
+        _options = new DbContextOptionsBuilder<TestDbContext>()
+            .UseSqlServer(SqlConnectionString)
+            .Options;
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
@@ -28,30 +36,19 @@ public class IntegrationTestWebAppFactory
         builder.ConfigureTestServices(services =>
         {
             services.RemoveAll<IChannel>();
-            // services.AddSingleton(sp => new ConnectionFactory()
-            // {
-            //     Uri = rabbitMqConnectionString,
-            // });
-            // var connectionString = msSqlConnectionString;
-            // connectionString.InitialCatalog = Guid.NewGuid().ToString("D");
-            // services.AddEntityFrameworkSqlServer();
-            //     //.BuildServiceProvider();
-            //
-            // var builder = new DbContextOptionsBuilder<MyContext>();
-            // var options = builder
-            //     .UseSqlServer(connectionString.ToString())
-            //     //.UseInternalServiceProvider(serviceProvider)
-            //     .Options;
-            //
-            // MyContext dbContext = new MyContext(options);
-            // dbContext.Database.EnsureDeleted();
-            // dbContext.Database.EnsureCreated();
-            // dbContext.Database.Migrate();
-            // services.AddScoped<IUnitOfWork, UnitOfWork>(x=> new UnitOfWork(dbContext));
+            services.RemoveAll<TestDbContext>();
+            
             services.AddApplication()
                 .AddInfrastructure();
 
-            services.AddSingleton<IChannel>(_ => channel);
+            services.AddSingleton<IChannel>(_ => _channel);
+            
+            var testDbContext = new TestDbContext(_options);
+            testDbContext.Database.EnsureCreatedAsync().GetAwaiter().GetResult();
+            testDbContext.Database.MigrateAsync().GetAwaiter().GetResult();
+            
+            //var connectionString = Guid.NewGuid().ToString("D");
+            //services.AddDbContext<TestDbContext>(_ => _.UseSqlServer(SqlConnectionString));
         });
     }
 }
