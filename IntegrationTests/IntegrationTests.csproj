@@ -11,13 +11,13 @@
 
     <ItemGroup>
         <PackageReference Include="coverlet.collector" Version="6.0.0"/>
-        <PackageReference Include="FluentAssertions" Version="6.12.2" />
+        <PackageReference Include="FluentAssertions" Version="6.12.2"/>
         <PackageReference Include="Microsoft.NET.Test.Sdk" Version="17.8.0"/>
         <PackageReference Include="Microsoft.AspNetCore.Mvc.Testing" Version="7.0.14"/>
-        <PackageReference Include="Moq" Version="4.20.72" />
+        <PackageReference Include="Moq" Version="4.20.72"/>
         <PackageReference Include="Testcontainers.MsSql" Version="4.0.0"/>
         <PackageReference Include="Testcontainers.RabbitMq" Version="3.9.0"/>
-        <PackageReference Include="RabbitMQ.Client" Version="7.0.0" />
+        <PackageReference Include="RabbitMQ.Client" Version="7.0.0"/>
         <PackageReference Include="xunit" Version="2.5.3"/>
         <PackageReference Include="xunit.runner.visualstudio" Version="2.5.3"/>
     </ItemGroup>
@@ -27,25 +27,25 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\Application\Application.csproj" />
-      <ProjectReference Include="..\Domain\Domain.csproj" />
-        <ProjectReference Include="..\Presentation\Presentation.csproj" />
-        <ProjectReference Include="..\Infrastructure\Infrastructure.csproj" />
+        <ProjectReference Include="..\Application\Application.csproj"/>
+        <ProjectReference Include="..\Domain\Domain.csproj"/>
+        <ProjectReference Include="..\Presentation\Presentation.csproj"/>
+        <ProjectReference Include="..\Infrastructure\Infrastructure.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
-      <None Remove="README.md" />
+        <None Remove="README.md"/>
     </ItemGroup>
 
     <ItemGroup>
-      <Compile Remove="SharedUnitTests.cs" />
-      <Compile Remove="TimeboxIntegrationTests.cs" />
-      <Compile Remove="EFIntegrationTests.cs" />
-      <Compile Remove="HttpClientIntegrationTests.cs" />
-      <Compile Remove="RabbitMqIntegrationTests.cs" />
+        <Compile Remove="SharedUnitTests.cs"/>
+        <Compile Remove="TimeboxIntegrationTests.cs"/>
+        <Compile Remove="EFIntegrationTests.cs"/>
+        <Compile Remove="HttpClientIntegrationTests.cs"/>
+        <Compile Remove="RabbitMqIntegrationTests.cs"/>
     </ItemGroup>
 
     <ItemGroup>
-      <EmbeddedResource Remove="Domain\**" />
+        <EmbeddedResource Remove="Domain\**"/>
     </ItemGroup>
 </Project>

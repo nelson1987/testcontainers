@@ -1,7 +1,8 @@
+using Application;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.EntityFrameworkCore;
-using Microsoft.EntityFrameworkCore.Storage;
-using Presentation.Commons;
+// using Microsoft.EntityFrameworkCore;
+// using Microsoft.EntityFrameworkCore.Storage;
+// using Presentation.Commons;
 
 namespace Presentation.Controllers;
 
@@ -9,12 +10,18 @@ namespace Presentation.Controllers;
 [Route("api/v1/[controller]")]
 public class ContratosController : ControllerBase
 {
-    /*
-    private static readonly string[] Summaries = new[]
-    {
-        "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
-    };
+    // private static readonly string[] Summaries = new[]
+    // {
+    //     "Freezing", "Bracing", "Chilly", "Cool", "Mild", "Warm", "Balmy", "Hot", "Sweltering", "Scorching"
+    // };
+    private readonly ICreateOrderHandler _handler;
 
+    public ContratosController(ICreateOrderHandler handler)
+    {
+        _handler = handler;
+    }
+
+    /*
     private readonly ILogger<ContratosController> _logger;
     private readonly IMessageProducer<CreatedUserEvent> _createUserProducer;
     private readonly IUserDomainService _userRepository;
@@ -29,21 +36,16 @@ public class ContratosController : ControllerBase
     }
 */
     [HttpGet]
-    public async Task<IActionResult> Get()
+    public async Task<IActionResult> Get(CancellationToken cancellationToken)
     {
         // await _createUserProducer.SendMessage(new CreatedUserEvent(5, "John Doe", 18, true));
         // await _userRepository.CreateUserAsync(new User(0, "John Doe", 18, true));
-        // return Enumerable.Range(1, 5).Select(index => new WeatherForecast
-        //     {
-        //         Date = DateOnly.FromDateTime(DateTime.Now.AddDays(index)),
-        //         TemperatureC = Random.Shared.Next(-20, 55),
-        //         Summary = Summaries[Random.Shared.Next(Summaries.Length)]
-        //     })
-        //     .ToArray();
-        return Ok("Hello World!");
+        var command = new CreateOrderCommand("John Doe", "johndoe@email.com",18,100.00M);
+        await _handler.Handle(command, cancellationToken);
+        return Ok();
     }
 }
-
+/*
 public interface IBaseRepository<TEntity> : IDisposable
     where TEntity : class
 {
@@ -192,4 +194,4 @@ public class UserDomainService : IUserDomainService
             await _unitOfWork.RollbackAsync();
         }
     }
-}
+}*/

@@ -59,5 +59,17 @@ public class CustomerIntegrationTests : SharedInfrastructure
         var response = await Client.GetAsync(Constantes.GET_URI_PATH);
         // Assert
         response.Should().BeSuccessful();
+        
     }
+    // [Fact]
+    // public async Task GetCustomerDetails_ShouldCallInternalApi_Result()
+    // {
+    //     // Act
+    //     var response = await Client.GetAsync(Constantes.GET_URI_PATH);
+    //     var users = await response.Content.ReadFromJsonAsync<WeatherForecast[]>();
+    //     var result = await response.Content.ReadAsStringAsync();
+    //     // Assert
+    //     result.Should().Be();
+    //     
+    // }
 }

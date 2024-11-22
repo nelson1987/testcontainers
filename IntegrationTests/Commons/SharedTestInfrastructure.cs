@@ -1,3 +1,4 @@
+using System.Data.SqlClient;
 using Infrastructure;
 using Microsoft.EntityFrameworkCore;
 using RabbitMQ.Client;
@@ -44,33 +45,9 @@ public class SharedTestInfrastructure : IAsyncLifetime
         //
         // _serviceProvider = services.BuildServiceProvider();
         // HttpClientFactory = _serviceProvider.GetRequiredService<IHttpClientFactory>();
-        // services.AddSingleton(sp =>
-        // {
-        //     var uri = new Uri(_rabbitContainer.GetConnectionString());
-        //     return new ConnectionFactory()
-        //     {
-        //         Uri = uri,
-        //     };
-        // });
-        // var connectionString = new SqlConnectionStringBuilder(_sqlContainer.GetConnectionString());
-        // connectionString.InitialCatalog = Guid.NewGuid().ToString("D");
-        //
-        // var serviceProvider = new ServiceCollection()
-        //     .AddEntityFrameworkSqlServer()
-        //     .BuildServiceProvider();
-        //
-        // var builder = new DbContextOptionsBuilder<MyContext>();
-        // var options = builder
-        //     .UseSqlServer(connectionString.ToString())
-        //     .UseInternalServiceProvider(serviceProvider)
-        //     .Options;
-        //
-        // MyContext dbContext = new MyContext(options);
-        // dbContext.Database.EnsureDeleted();
-        // dbContext.Database.EnsureCreated();
-        // dbContext.Database.Migrate();
-        // services.AddScoped<IUnitOfWork, UnitOfWork>(x=> new UnitOfWork(dbContext));
         var factory = new IntegrationTestWebAppFactory();
+        factory.SetRabbitMqConnectionString(new Uri(_rabbitContainer.GetConnectionString()));
+        factory.SetMsSqlConnectionString(new SqlConnectionStringBuilder(_sqlContainer.GetConnectionString()));
         Client = factory.CreateDefaultClient();
     }
 
