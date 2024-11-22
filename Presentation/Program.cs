@@ -15,10 +15,10 @@ builder.Services
 // builder.Services.AddScoped<IUserDomainService, UserDomainService>();
 // builder.Services.AddScoped<IUnitOfWork, UnitOfWork>();
 // builder.Services.AddScoped<IUserRepository, UserRepository>();
-var connectionString = new SqlConnectionStringBuilder("");
-connectionString.InitialCatalog = Guid.NewGuid().ToString("D");
+
+var connectionString = Guid.NewGuid().ToString("D");
 builder.Services.AddDbContext<TestDbContext>(options =>
-    options.UseSqlServer(connectionString.ToString()));
+    options.UseSqlServer(connectionString));
 // builder.Services.AddScoped<IMessageProducer<CreatedUserEvent>, CheckoutItemProducer>();
 builder.Services.AddSingleton<IChannel>(sp =>
 {
