@@ -31,25 +31,25 @@ public class IntegrationTestWebAppFactory
         builder.ConfigureTestServices(services =>
         {
             // services.RemoveAll<ConnectionFactory>();
-            services.AddSingleton(sp => new ConnectionFactory()
-            {
-                Uri = rabbitMqConnectionString,
-            });
-            var connectionString = msSqlConnectionString;
-            connectionString.InitialCatalog = Guid.NewGuid().ToString("D");
-            services.AddEntityFrameworkSqlServer();
-                //.BuildServiceProvider();
-
-            var builder = new DbContextOptionsBuilder<MyContext>();
-            var options = builder
-                .UseSqlServer(connectionString.ToString())
-                //.UseInternalServiceProvider(serviceProvider)
-                .Options;
-
-            MyContext dbContext = new MyContext(options);
-            dbContext.Database.EnsureDeleted();
-            dbContext.Database.EnsureCreated();
-            dbContext.Database.Migrate();
+            // services.AddSingleton(sp => new ConnectionFactory()
+            // {
+            //     Uri = rabbitMqConnectionString,
+            // });
+            // var connectionString = msSqlConnectionString;
+            // connectionString.InitialCatalog = Guid.NewGuid().ToString("D");
+            // services.AddEntityFrameworkSqlServer();
+            //     //.BuildServiceProvider();
+            //
+            // var builder = new DbContextOptionsBuilder<MyContext>();
+            // var options = builder
+            //     .UseSqlServer(connectionString.ToString())
+            //     //.UseInternalServiceProvider(serviceProvider)
+            //     .Options;
+            //
+            // MyContext dbContext = new MyContext(options);
+            // dbContext.Database.EnsureDeleted();
+            // dbContext.Database.EnsureCreated();
+            // dbContext.Database.Migrate();
             // services.AddScoped<IUnitOfWork, UnitOfWork>(x=> new UnitOfWork(dbContext));
         });
     }

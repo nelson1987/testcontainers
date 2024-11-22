@@ -45,10 +45,6 @@ public class SharedTestInfrastructure : IAsyncLifetime
         //
         // _serviceProvider = services.BuildServiceProvider();
         // HttpClientFactory = _serviceProvider.GetRequiredService<IHttpClientFactory>();
-        var factory = new IntegrationTestWebAppFactory();
-        factory.SetRabbitMqConnectionString(new Uri(_rabbitContainer.GetConnectionString()));
-        factory.SetMsSqlConnectionString(new SqlConnectionStringBuilder(_sqlContainer.GetConnectionString()));
-        Client = factory.CreateDefaultClient();
     }
 
     public async Task InitializeAsync()
@@ -74,6 +70,11 @@ public class SharedTestInfrastructure : IAsyncLifetime
         await using var context = new TestDbContext(options);
         await context.Database.EnsureCreatedAsync();
         await context.Database.MigrateAsync();
+        
+        var factory = new IntegrationTestWebAppFactory();
+        // factory.SetRabbitMqConnectionString(new Uri(_rabbitContainer.GetConnectionString()));
+        // factory.SetMsSqlConnectionString(new SqlConnectionStringBuilder(SqlConnectionString));
+        Client = factory.CreateDefaultClient();
     }
 
     public async Task DisposeAsync()
