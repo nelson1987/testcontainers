@@ -6,6 +6,7 @@ using Microsoft.AspNetCore.Mvc.Testing;
 using Microsoft.AspNetCore.TestHost;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 using Presentation;
 using Presentation.Commons;
 using RabbitMQ.Client;
@@ -15,24 +16,18 @@ namespace IntegrationTests;
 public class IntegrationTestWebAppFactory
     : WebApplicationFactory<Program>, IDisposable
 {
-    public Uri rabbitMqConnectionString { get; private set; }
-    public SqlConnectionStringBuilder msSqlConnectionString { get; private set; }
+    public IChannel channel { get; private set; }
 
-    public void SetRabbitMqConnectionString(Uri uri)
+    public IChannel SetChannel(IConnection rabbitConnection)
     {
-        rabbitMqConnectionString = uri;
-    }
-
-    public void SetMsSqlConnectionString(SqlConnectionStringBuilder connectionString)
-    {
-        msSqlConnectionString = connectionString;
+        return rabbitConnection.CreateChannelAsync().GetAwaiter().GetResult();
     }
 
     protected override void ConfigureWebHost(IWebHostBuilder builder)
     {
         builder.ConfigureTestServices(services =>
         {
-            // services.RemoveAll<ConnectionFactory>();
+            services.RemoveAll<IChannel>();
             // services.AddSingleton(sp => new ConnectionFactory()
             // {
             //     Uri = rabbitMqConnectionString,
@@ -55,6 +50,8 @@ public class IntegrationTestWebAppFactory
             // services.AddScoped<IUnitOfWork, UnitOfWork>(x=> new UnitOfWork(dbContext));
             services.AddApplication()
                 .AddInfrastructure();
+
+            services.AddSingleton<IChannel>(_ => channel);
         });
     }
 }

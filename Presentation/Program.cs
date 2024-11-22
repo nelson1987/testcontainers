@@ -20,10 +20,13 @@ connectionString.InitialCatalog = Guid.NewGuid().ToString("D");
 builder.Services.AddDbContext<TestDbContext>(options =>
     options.UseSqlServer(connectionString.ToString()));
 // builder.Services.AddScoped<IMessageProducer<CreatedUserEvent>, CheckoutItemProducer>();
-var connectionFactory = new ConnectionFactory();
-connectionFactory.Uri = new Uri("URL FOR RABBITMQ SERVER");
-var rabbitConnection = connectionFactory.CreateConnectionAsync().GetAwaiter().GetResult();
-builder.Services.AddSingleton<IChannel>(_ => rabbitConnection.CreateChannelAsync().GetAwaiter().GetResult());
+builder.Services.AddSingleton<IChannel>(sp =>
+{
+    var connectionFactory = new ConnectionFactory();
+    connectionFactory.Uri = new Uri("URL FOR RABBITMQ SERVER");
+    var rabbitConnection = connectionFactory.CreateConnectionAsync().GetAwaiter().GetResult();
+    return rabbitConnection.CreateChannelAsync().GetAwaiter().GetResult();
+});
 //IChannel
 builder.Services.AddGlobalExceptionHandler();
 builder.Services.AddControllers();

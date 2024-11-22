@@ -72,8 +72,7 @@ public class SharedTestInfrastructure : IAsyncLifetime
         await context.Database.MigrateAsync();
         
         var factory = new IntegrationTestWebAppFactory();
-        // factory.SetRabbitMqConnectionString(new Uri(_rabbitContainer.GetConnectionString()));
-        // factory.SetMsSqlConnectionString(new SqlConnectionStringBuilder(SqlConnectionString));
+        factory.SetChannel(RabbitConnection);
         Client = factory.CreateDefaultClient();
     }
 
